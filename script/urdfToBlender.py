@@ -45,11 +45,11 @@ def applyrotl(o, p):
 
 # Main function
 def main():
-
+    
     # Get the urdf and parse it
     rootp = "C:\\Users\\ngenesio\\robotology\\robotology-superbuild\\robotology\\icub-models\\iCub\\robots\\"
-    root = ET.parse(rootp+'iCubGazeboV2_5\\model.urdf').getroot()[0]
-
+    root = ET.parse(rootp+'iCubGazeboV2_5\\model.urdf').getroot()
+    
     # Define the armature
     # Create armature and armature object
     armature_name = "iCub"
@@ -61,10 +61,10 @@ def main():
         armature_object = bpy.data.objects.new(armature_name, armature)
         # Link armature object to our scene
         bpy.context.scene.collection.objects.link(armature_object)
-
-    #Make a coding shortcut
+ 
+    #Make a coding shortcut 
     armature_data = bpy.data.objects[armature_name]
-
+    
     # must be in edit mode to add bones
     bpy.context.view_layer.objects.active = armature_object
     bpy.ops.object.mode_set(mode='EDIT')
@@ -75,30 +75,39 @@ def main():
     print("starting urdf parsing loop")
     # Define all links and joints reading from the urdf.
     for i in root:
+        # Ignore fake links/joints
+        if "name" in i.attrib.keys():
+            if "_ft_" in i.attrib["name"] or "_skin_" in i.attrib["name"] or "_dh_frame" in i.attrib["name"] or "_back_contact" in i.attrib["name"] or "_fixed_joint" in i.attrib["name"]:
+                continue
         if i.tag == "link":
             links[i.attrib["name"]] = i
-            print("Link:")
-            print(i.attrib["name"])
-        # Add joints, ignoring the "fake ones" (ft and skin)
-        if i.tag == "joint" and "_ft_" not in i.attrib["name"] and "_skin_" not in i.attrib["name"]:
+            #print("Link:")
+            #print(i.attrib["name"])
+        # Add joints
+        if i.tag == "joint":
             joints[i.attrib["name"]] = i
-            print("joint:")
-            print(i.attrib["name"])
+            #print("joint:")
+            #print(i)
 
     l = {}
     tagged = []
     print("starting urdf parsing ")
-    for j in joints:
-        axis       = GetTag(["axis", "xyz"], j).text.split()
-        parentname = GetTag(["parent"], j).text
-        b = edit_bones.new(j.attrib["name"])
+    #print(joints)
+    for key, value in joints.items():
+        axis       = GetTag(["axis"], value).attrib["xyz"].split()
+        origin       = GetTag(["origin"], value).attrib["xyz"].split()
+        parentname = GetTag(["parent"], value).attrib["link"]
+        try:
+            b = bpy.data.objects[value.attrib["name"]]
+        except KeyError:
+            b = edit_bones.new(value.attrib["name"])
         print("Adding bone:")
-        print(j.attrib["name"])
+        print(value.attrib["name"])
         print("With axis:")
         print(axis)
         # No idea where to put the axis
-        b.head(axis[0], axis[1], axis[2])
-        b.tail(axis[0]+1.0, axis[1]+1.0, axis[2]+1.0)
+        b.head = (float(origin[0]), float(origin[1]), float(origin[2]))
+        b.tail = (float(origin[0]), float(origin[1]), float(origin[2])+1.0)
 
     # exit edit mode to save bones so they can be used in pose mode
     bpy.ops.object.mode_set(mode='OBJECT')
