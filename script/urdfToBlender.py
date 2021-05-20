@@ -43,13 +43,14 @@ def applyrotl(o, p):
     o.SetMl(MatrixRotZ(p.z) * o.GetMl())
 
 
+
 # Main function
 def main():
-    
+
     # Get the urdf and parse it
     rootp = "C:\\Users\\ngenesio\\robotology\\robotology-superbuild\\robotology\\icub-models\\iCub\\robots\\"
     root = ET.parse(rootp+'iCubGazeboV2_5\\model.urdf').getroot()
-    
+
     # Define the armature
     # Create armature and armature object
     armature_name = "iCub"
@@ -61,10 +62,10 @@ def main():
         armature_object = bpy.data.objects.new(armature_name, armature)
         # Link armature object to our scene
         bpy.context.scene.collection.objects.link(armature_object)
- 
-    #Make a coding shortcut 
+
+    #Make a coding shortcut
     armature_data = bpy.data.objects[armature_name]
-    
+
     # must be in edit mode to add bones
     bpy.context.view_layer.objects.active = armature_object
     bpy.ops.object.mode_set(mode='EDIT')
@@ -77,7 +78,7 @@ def main():
     for i in root:
         # Ignore fake links/joints
         if "name" in i.attrib.keys():
-            if "_ft_" in i.attrib["name"] or "_skin_" in i.attrib["name"] or "_dh_frame" in i.attrib["name"] or "_back_contact" in i.attrib["name"] or "_fixed_joint" in i.attrib["name"]:
+            if "_skin_" in i.attrib["name"] or "_dh_frame" in i.attrib["name"] or "_back_contact" in i.attrib["name"] or "_fixed_joint" in i.attrib["name"]:
                 continue
         if i.tag == "link":
             links[i.attrib["name"]] = i
@@ -89,25 +90,66 @@ def main():
             #print("joint:")
             #print(i)
 
-    l = {}
-    tagged = []
+    bone_list = {}
     print("starting urdf parsing ")
     #print(joints)
+    # Loop for defining the hierarchy
     for key, value in joints.items():
-        axis       = GetTag(["axis"], value).attrib["xyz"].split()
-        origin       = GetTag(["origin"], value).attrib["xyz"].split()
-        parentname = GetTag(["parent"], value).attrib["link"]
+
         try:
-            b = bpy.data.objects[value.attrib["name"]]
-        except KeyError:
-            b = edit_bones.new(value.attrib["name"])
-        print("Adding bone:")
-        print(value.attrib["name"])
-        print("With axis:")
-        print(axis)
+            axis        = [float(s) for s in GetTag(["axis"], value).attrib["xyz"].split()]
+            origin      = [float(s) for s in GetTag(["origin"], value).attrib["xyz"].split()]
+        except:
+            pass
+
+        parentname  = GetTag(["parent"], value).attrib["link"]
+        childname   = GetTag(["child"], value).attrib["link"]
+
+        #try:
+        #    b = bpy.data.objects[value.attrib["name"]]
+        #except KeyError:
+        #    b = edit_bones.new(value.attrib["name"])
+
+        #print("Adding bone:")
+        #print(value.attrib["name"])
+        #print("With axis:")
+        #print(axis)
+        bparent = None
+        if parentname in bone_list.keys():
+            bparent = bone_list[parentname]
+        else:
+            if parentname != "root_link":
+                for k,v in joints.items():
+                    if GetTag(["child"], v).attrib["link"] == parentname:
+                        bparent = edit_bones.new(v.attrib["name"])
+                        break
+            else:
+                bparent = edit_bones.new(parentname)
+            # TODO I have to put random value for head and tail bones otherwise bones with 0 lenght are removed
+            bparent.head = (0,0,0)
+            bparent.tail = (0,0,1)
+            bone_list[parentname] = bparent
+
+        bchild = edit_bones.new(value.attrib["name"])
+        if bparent:
+            bchild.parent = bparent
+        bone_list[childname] = bchild
+        # TODO I have to put random value for head and tail bones otherwise bones with 0 lenght are removed
+        bchild.head = (0,0,0)
+        bchild.tail = (0,0,1)
         # No idea where to put the axis
-        b.head = (float(origin[0]), float(origin[1]), float(origin[2]))
-        b.tail = (float(origin[0]), float(origin[1]), float(origin[2])+1.0)
+
+
+
+
+        # Loop for the joint position and limits.
+        #if parentname == "root_link":
+            #b.head = (origin[0], origin[1], origin[2])
+        #else:
+            #bparent = bpy.data.objects[parentname]
+            #b.head = (bparent.head[0] + origin[0], bparent.head[1] + origin[1], bparent.head[2] + origin[2])
+
+        #b.tail = (b.head[0] + axis[0], b.head[1] + axis[1], b.head[2] + axis[2])
 
     # exit edit mode to save bones so they can be used in pose mode
     bpy.ops.object.mode_set(mode='OBJECT')
