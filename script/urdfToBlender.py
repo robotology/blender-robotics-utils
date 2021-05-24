@@ -127,29 +127,32 @@ def main():
                 bparent = edit_bones.new(parentname)
             # TODO I have to put random value for head and tail bones otherwise bones with 0 lenght are removed
             bparent.head = (0,0,0)
-            bparent.tail = (0,0,1)
+            bparent.tail = (0,0,-0.01)
             bone_list[parentname] = bparent
 
         bchild = edit_bones.new(value.attrib["name"])
         if bparent:
             bchild.parent = bparent
-        bone_list[childname] = bchild
+
         # TODO I have to put random value for head and tail bones otherwise bones with 0 lenght are removed
-        bchild.head = (0,0,0)
-        bchild.tail = (0,0,1)
-        # No idea where to put the axis
-
-
-
-
         # Loop for the joint position and limits.
-        #if parentname == "root_link":
-            #b.head = (origin[0], origin[1], origin[2])
-        #else:
-            #bparent = bpy.data.objects[parentname]
-            #b.head = (bparent.head[0] + origin[0], bparent.head[1] + origin[1], bparent.head[2] + origin[2])
+        if parentname == "root_link":
+            bchild.head = (origin[0], origin[1], origin[2]+0.63)
+            bparent.tail = (0,0,-0.01)
+        else: 
+            bchild.head = (bparent.head[0]+origin[0], bparent.head[1]+origin[1], bparent.head[2]+origin[2])
+            bchild.tail = (bchild.head[0]+0.01, bchild.head[1], bchild.head[2])
+            bparent.tail = (bchild.head[0], bchild.head[1], bchild.head[2])
+            print(key, origin)
 
-        #b.tail = (b.head[0] + axis[0], b.head[1] + axis[1], b.head[2] + axis[2])
+        bone_list[childname] = bchild
+    # Set the pose    
+    #for key in bone_list.keys():
+    #    bchild  = bone_list[key]
+    #    bparent = bone_list[key].parent
+    #    axis        = [float(s) for s in GetTag(["axis"], links[key]).attrib["xyz"].split()]
+    #    origin      = [float(s) for s in GetTag(["origin"], links[key]).attrib["xyz"].split()]
+    #    print("Parent")
 
     # exit edit mode to save bones so they can be used in pose mode
     bpy.ops.object.mode_set(mode='OBJECT')
