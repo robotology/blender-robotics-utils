@@ -1,6 +1,8 @@
 import bpy, bmesh
 import copy
 import xml.etree.ElementTree as ET
+import mathutils
+import math
 
 def getwcoord(o):
     return o.GetMg().off
@@ -49,7 +51,7 @@ def main():
 
     # Get the urdf and parse it
     rootp = "C:\\Users\\ngenesio\\robotology\\robotology-superbuild\\robotology\\icub-models\\iCub\\robots\\"
-    root = ET.parse(rootp+'iCubGazeboV2_5\\model.urdf').getroot()
+    root = ET.parse(rootp+'iCubGazeboV3\\model.urdf').getroot()
 
     # Define the armature
     # Create armature and armature object
@@ -78,7 +80,7 @@ def main():
     for i in root:
         # Ignore fake links/joints
         if "name" in i.attrib.keys():
-            if "_skin_" in i.attrib["name"] or "_dh_frame" in i.attrib["name"] or "_back_contact" in i.attrib["name"] or "_fixed_joint" in i.attrib["name"]:
+            if "_skin_" in i.attrib["name"] or "_dh_frame" in i.attrib["name"] or "_back_contact" in i.attrib["name"]:
                 continue
         if i.tag == "link":
             links[i.attrib["name"]] = i
@@ -99,6 +101,7 @@ def main():
         try:
             axis        = [float(s) for s in GetTag(["axis"], value).attrib["xyz"].split()]
             origin      = [float(s) for s in GetTag(["origin"], value).attrib["xyz"].split()]
+            rpy         = [float(s) for s in GetTag(["origin"], value).attrib["rpy"].split()]
         except:
             pass
 
@@ -121,30 +124,39 @@ def main():
             if parentname != "root_link":
                 for k,v in joints.items():
                     if GetTag(["child"], v).attrib["link"] == parentname:
-                        bparent = edit_bones.new(v.attrib["name"])
+                        bparent = [edit_bones.new(v.attrib["name"]), [float(s) for s in GetTag(["origin"], v).attrib["rpy"].split()]]
                         break
             else:
-                bparent = edit_bones.new(parentname)
+                bparent = [edit_bones.new(parentname), [0,0,0]]
             # TODO I have to put random value for head and tail bones otherwise bones with 0 lenght are removed
-            bparent.head = (0,0,0)
-            bparent.tail = (0,0,-0.01)
+            bparent[0].head = (0,0,0)
+            bparent[0].tail = (0,0,-0.01)
             bone_list[parentname] = bparent
 
-        bchild = edit_bones.new(value.attrib["name"])
+        bchild = [edit_bones.new(value.attrib["name"]), rpy]
         if bparent:
-            bchild.parent = bparent
+            bchild[0].parent = bparent[0]
 
         # TODO I have to put random value for head and tail bones otherwise bones with 0 lenght are removed
         # Loop for the joint position and limits.
         if parentname == "root_link":
-            bchild.head = (origin[0], origin[1], origin[2]+0.63)
-            bparent.tail = (0,0,-0.01)
+            bchild[0].head = (origin[0], origin[1], origin[2])
+            bparent[0].tail = (0,0,-0.01)
+            #print(key, bparent[0].head, bchild[0].head)
         else: 
-            bchild.head = (bparent.head[0]+origin[0], bparent.head[1]+origin[1], bparent.head[2]+origin[2])
-            bchild.tail = (bchild.head[0]+0.01, bchild.head[1], bchild.head[2])
-            bparent.tail = (bchild.head[0], bchild.head[1], bchild.head[2])
-            print(key, origin)
-
+            orig_vec = mathutils.Vector(origin)
+            print(key)
+            print(orig_vec)
+            eul = mathutils.Euler(rpy,'XYZ')#(bparent[1], 'XYZ')
+            orig_vec.rotate(eul)
+            print(orig_vec)
+            bchild[0].use_relative_parent = True
+            bchild[0].head = (bparent[0].head[0]+orig_vec[0], bparent[0].head[1]+orig_vec[1], bparent[0].head[2]+orig_vec[2])
+            bchild[0].tail = (bchild[0].head[0]+0.01, bchild[0].head[1], bchild[0].head[2])
+        #bchild.tail = (bchild.head[0]+0.1*axis[0], bchild.head[1]+0.1*axis[1], bchild.head[2]+0.1*axis[2])
+            bparent[0].tail = (bchild[0].head[0], bchild[0].head[1], bchild[0].head[2])
+            
+        #print(key, axis)
         bone_list[childname] = bchild
     # Set the pose    
     #for key in bone_list.keys():
