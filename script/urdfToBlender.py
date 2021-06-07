@@ -142,20 +142,21 @@ def main():
         if parentname == "root_link":
             bchild[0].head = (origin[0], origin[1], origin[2])
             bparent[0].tail = (0,0,-0.01)
-            #print(key, bparent[0].head, bchild[0].head)
+            print(key, bparent[0].head, bchild[0].head)
         else:
             euler_order = 'XYZ'  # ‘XYZ’, ‘XZY’, ‘YXZ’, ‘YZX’, ‘ZXY’, ‘ZYX’
-            orig_vec = mathutils.Vector(origin)
-            mat_parent = mathutils.Euler(bparent[1], euler_order).to_matrix()
-            mat_child  = mathutils.Euler(rpy, euler_order).to_matrix()
-            mat_final  = mat_parent * mat_child
-            eul_final = mat_final.to_euler(euler_order)
+            orig_vec    = mathutils.Vector(origin)
+            mat_parent  = mathutils.Euler(bparent[1], euler_order).to_matrix()
+            mat_child   = mathutils.Euler(rpy, euler_order).to_matrix()
+            mat_parent.rotate(mat_child) 
+            eul_final   = mat_parent.to_euler(euler_order)
             # Update the rpy of the child, for concatenating the rotations
-            bchild[1] = eul_final
+            bchild[1]   = eul_final
             orig_vec.rotate(eul_final)
-            print(key, origin, orig_vec, rpy, bparent[1])
-            bchild[0].use_relative_parent = True
+            print(key, bparent[0].head, orig_vec, mat_parent, mat_child, eul_final)
+            #bchild[0].use_relative_parent = True
             bchild[0].head = (bparent[0].head[0] + orig_vec[0], bparent[0].head[1] + orig_vec[1], bparent[0].head[2] + orig_vec[2])
+            print("AAAAA",origin,bchild[0].head)
             bchild[0].tail = (bchild[0].head[0]+0.01, bchild[0].head[1], bchild[0].head[2])
         #bchild.tail = (bchild.head[0]+0.1*axis[0], bchild.head[1]+0.1*axis[1], bchild.head[2]+0.1*axis[2])
             bparent[0].tail = (bchild[0].head[0], bchild[0].head[1], bchild[0].head[2])
