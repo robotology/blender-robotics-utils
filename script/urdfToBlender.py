@@ -3,6 +3,7 @@ import copy
 import xml.etree.ElementTree as ET
 import mathutils
 import math
+import idyntree.bindings as iDynTree
 
 def getwcoord(o):
     return o.GetMg().off
@@ -51,7 +52,35 @@ def main():
 
     # Get the urdf and parse it
     rootp = "C:\\Users\\ngenesio\\robotology\\robotology-superbuild\\robotology\\icub-models\\iCub\\robots\\"
-    root = ET.parse(rootp+'iCubGazeboV2_5\\model.urdf').getroot()
+    
+    URDF_FILE = rootp+'iCubGazeboV2_5\\model.urdf';
+
+    dynComp = iDynTree.KinDynComputations();
+    mdlLoader = iDynTree.ModelLoader();
+    mdlLoader.loadModelFromFile(URDF_FILE);
+    
+    dofs = dynComp.model().getNrOfDOFs();
+    s = iDynTree.VectorDynSize(dofs);
+    ds = iDynTree.VectorDynSize(dofs);
+    dds = iDynTree.VectorDynSize(dofs);
+    for dof in range(dofs):
+        # For the sake of the example, we fill the joints vector with gibberish data (remember in any case
+        # that all quantities are expressed in radians-based units
+        s.setVal(dof, 0.0);
+        ds.setVal(dof, 0.0);
+        dds.setVal(dof, 0.3);
+
+
+    # The gravity acceleration is a 3d acceleration vector.
+    gravity = iDynTree.Vector3();
+    gravity.zero();
+    gravity.setVal(2, -9.81);
+    dynComp.setRobotState(s,ds,gravity);
+    
+    dynComp.loadRobotModel(mdlLoader.model());
+    print("The loaded model has", dynComp.model().getNrOfDOFs(), \
+    "internal degrees of freedom and",dynComp.model().getNrOfLinks(),"links.")
+    root = ET.parse(URDF_FILE).getroot()
 
     # Define the armature
     # Create armature and armature object
@@ -94,6 +123,7 @@ def main():
 
     bone_list = {}
     print("starting urdf parsing ")
+
     #print(joints)
     # Loop for defining the hierarchy
     for key, value in joints.items():
@@ -124,45 +154,34 @@ def main():
             if parentname != "root_link":
                 for k,v in joints.items():
                     if GetTag(["child"], v).attrib["link"] == parentname:
-                        bparent = [edit_bones.new(v.attrib["name"]), [float(s) for s in GetTag(["origin"], v).attrib["rpy"].split()]]
+                        bparent = edit_bones.new(v.attrib["name"])
                         break
             else:
-                bparent = [edit_bones.new(parentname), [0,0,0]]
+                bparent = edit_bones.new(parentname)
             # TODO I have to put random value for head and tail bones otherwise bones with 0 lenght are removed
-            bparent[0].head = (0,0,0)
-            bparent[0].tail = (0,0,-0.01)
+            bparent.head = (0,0,0)
+            bparent.tail = (0,0,-0.01)
             bone_list[parentname] = bparent
 
-        bchild = [edit_bones.new(value.attrib["name"]), rpy]
+        bchild = edit_bones.new(value.attrib["name"])
         if bparent:
-            bchild[0].parent = bparent[0]
+            bchild.parent = bparent
+        
+        parent_link_position = dynComp.getRelativeTransform("root_link", parentname).getPosition().toNumPy();
+        child_link_position  = dynComp.getRelativeTransform("root_link", childname).getPosition().toNumPy();
 
-        # TODO I have to put random value for head and tail bones otherwise bones with 0 lenght are removed
-        # Loop for the joint position and limits.
-        if parentname == "root_link":
-            bchild[0].head = (origin[0], origin[1], origin[2])
-            bparent[0].tail = (0,0,-0.01)
-            print(key, bparent[0].head, bchild[0].head)
-        else:
-            euler_order = 'XYZ'  # ‘XYZ’, ‘XZY’, ‘YXZ’, ‘YZX’, ‘ZXY’, ‘ZYX’
-            orig_vec    = mathutils.Vector(origin)
-            mat_parent  = mathutils.Euler(bparent[1], euler_order).to_matrix()
-            mat_child   = mathutils.Euler(rpy, euler_order).to_matrix()
-            mat_parent.rotate(mat_child) 
-            eul_final   = mat_parent.to_euler(euler_order)
-            # Update the rpy of the child, for concatenating the rotations
-            bchild[1]   = eul_final
-            orig_vec.rotate(eul_final)
-            print(key, bparent[0].head, orig_vec, mat_parent, mat_child, eul_final)
-            #bchild[0].use_relative_parent = True
-            bchild[0].head = (bparent[0].head[0] + orig_vec[0], bparent[0].head[1] + orig_vec[1], bparent[0].head[2] + orig_vec[2])
-            print("AAAAA",origin,bchild[0].head)
-            bchild[0].tail = (bchild[0].head[0]+0.01, bchild[0].head[1], bchild[0].head[2])
-        #bchild.tail = (bchild.head[0]+0.1*axis[0], bchild.head[1]+0.1*axis[1], bchild.head[2]+0.1*axis[2])
-            bparent[0].tail = (bchild[0].head[0], bchild[0].head[1], bchild[0].head[2])
+        bchild.head = parent_link_position
+        bchild.tail = child_link_position
+        #print("Adding", key, parentname, childname, parent_link_position, child_link_position,"LENGTH", bchild.length)
             
-        #print(key, axis)
+        #hide fixed_joint and ft bones (for now just in edit mode :/)
+        if "_ft_sensor" in key or "fixed_joint" in key:
+            bchild.hide = True
         bone_list[childname] = bchild
+        
+        
+    
+    
     # Set the pose    
     #for key in bone_list.keys():
     #    bchild  = bone_list[key]
@@ -173,6 +192,7 @@ def main():
 
     # exit edit mode to save bones so they can be used in pose mode
     bpy.ops.object.mode_set(mode='OBJECT')
+    
 
     # make the custom bone shape
     #bm = bmesh.new()
