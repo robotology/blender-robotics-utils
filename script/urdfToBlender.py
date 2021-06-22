@@ -1,6 +1,5 @@
 import bpy, bmesh
 import copy
-import xml.etree.ElementTree as ET
 import mathutils
 import math
 import idyntree.bindings as iDynTree
@@ -57,8 +56,23 @@ def main():
 
     dynComp = iDynTree.KinDynComputations();
     mdlLoader = iDynTree.ModelLoader();
+    mdlExporter = iDynTree.ModelExporter();
     mdlLoader.loadModelFromFile(URDF_FILE);
-    
+    # Remove fixed joints
+    considered_joints = []
+    for j_id in range(mdlLoader.model().getNrOfJoints()):
+        joint = mdlLoader.model().getJoint(j_id)
+        joint_name = mdlLoader.model().getJointName(j_id)
+        if joint.getNrOfDOFs() == 0:
+            continue
+        considered_joints.append(joint_name)
+        
+    # Produce the reduced urdf    
+    mdlLoader.loadReducedModelFromFullModel(mdlLoader.model(), considered_joints)
+    model = mdlLoader.model()
+    traversal = iDynTree.Traversal()
+    ok_traversal = model.computeFullTreeTraversal(traversal)
+
     dofs = dynComp.model().getNrOfDOFs();
     s = iDynTree.VectorDynSize(dofs);
     ds = iDynTree.VectorDynSize(dofs);
@@ -80,7 +94,6 @@ def main():
     dynComp.loadRobotModel(mdlLoader.model());
     print("The loaded model has", dynComp.model().getNrOfDOFs(), \
     "internal degrees of freedom and",dynComp.model().getNrOfLinks(),"links.")
-    root = ET.parse(URDF_FILE).getroot()
 
     # Define the armature
     # Create armature and armature object
@@ -103,58 +116,28 @@ def main():
     edit_bones = armature_data.data.edit_bones
 
     links = {}
-    joints = {}
-    print("starting urdf parsing loop")
-    # Define all links and joints reading from the urdf.
-    for i in root:
-        # Ignore fake links/joints
-        if "name" in i.attrib.keys():
-            if "_skin_" in i.attrib["name"] or "_dh_frame" in i.attrib["name"] or "_back_contact" in i.attrib["name"]:
-                continue
-        if i.tag == "link":
-            links[i.attrib["name"]] = i
-            #print("Link:")
-            #print(i.attrib["name"])
-        # Add joints
-        if i.tag == "joint":
-            joints[i.attrib["name"]] = i
-            #print("joint:")
-            #print(i)
+    joints = []
 
     bone_list = {}
-    print("starting urdf parsing ")
-
     #print(joints)
     # Loop for defining the hierarchy
-    for key, value in joints.items():
+    for idyn_joint_idx in range(model.getNrOfJoints()):
 
-        try:
-            axis        = [float(s) for s in GetTag(["axis"], value).attrib["xyz"].split()]
-            origin      = [float(s) for s in GetTag(["origin"], value).attrib["xyz"].split()]
-            rpy         = [float(s) for s in GetTag(["origin"], value).attrib["rpy"].split()]
-        except:
-            pass
+        parentname = model.getLinkName(traversal.getParentLinkIndexFromJointIndex(model,
+                                                                         idyn_joint_idx))
+        childname = model.getLinkName(traversal.getChildLinkIndexFromJointIndex(model,
+                                                                         idyn_joint_idx))
 
-        parentname  = GetTag(["parent"], value).attrib["link"]
-        childname   = GetTag(["child"], value).attrib["link"]
-
-        #try:
-        #    b = bpy.data.objects[value.attrib["name"]]
-        #except KeyError:
-        #    b = edit_bones.new(value.attrib["name"])
-
-        #print("Adding bone:")
-        #print(value.attrib["name"])
-        #print("With axis:")
-        #print(axis)
         bparent = None
         if parentname in bone_list.keys():
             bparent = bone_list[parentname]
         else:
             if parentname != "root_link":
-                for k,v in joints.items():
-                    if GetTag(["child"], v).attrib["link"] == parentname:
-                        bparent = edit_bones.new(v.attrib["name"])
+                for i in range(model.getNrOfJoints()):
+                    childname_prev = model.getLinkName(traversal.getChildLinkIndexFromJointIndex(model,
+                                                                         i))
+                    if childname_prev == parentname:
+                        bparent = edit_bones.new(model.getJointName(i))
                         break
             else:
                 bparent = edit_bones.new(parentname)
@@ -163,7 +146,7 @@ def main():
             bparent.tail = (0,0,-0.01)
             bone_list[parentname] = bparent
 
-        bchild = edit_bones.new(value.attrib["name"])
+        bchild = edit_bones.new(model.getJointName(idyn_joint_idx))
         if bparent:
             bchild.parent = bparent
         
@@ -175,20 +158,7 @@ def main():
         #print("Adding", key, parentname, childname, parent_link_position, child_link_position,"LENGTH", bchild.length)
             
         #hide fixed_joint and ft bones (for now just in edit mode :/)
-        if "_ft_sensor" in key or "fixed_joint" in key:
-            bchild.hide = True
         bone_list[childname] = bchild
-        
-        
-    
-    
-    # Set the pose    
-    #for key in bone_list.keys():
-    #    bchild  = bone_list[key]
-    #    bparent = bone_list[key].parent
-    #    axis        = [float(s) for s in GetTag(["axis"], links[key]).attrib["xyz"].split()]
-    #    origin      = [float(s) for s in GetTag(["origin"], links[key]).attrib["xyz"].split()]
-    #    print("Parent")
 
     # exit edit mode to save bones so they can be used in pose mode
     bpy.ops.object.mode_set(mode='OBJECT')
