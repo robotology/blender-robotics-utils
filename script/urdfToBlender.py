@@ -122,12 +122,17 @@ def main():
     #print(joints)
     # Loop for defining the hierarchy
     for idyn_joint_idx in range(model.getNrOfJoints()):
-
-        parentname = model.getLinkName(traversal.getParentLinkIndexFromJointIndex(model,
-                                                                         idyn_joint_idx))
-        childname = model.getLinkName(traversal.getChildLinkIndexFromJointIndex(model,
-                                                                         idyn_joint_idx))
-
+        parentIdx = traversal.getParentLinkIndexFromJointIndex(model,
+                                                               idyn_joint_idx)
+        childIdx = traversal.getChildLinkIndexFromJointIndex(model,
+                                                              idyn_joint_idx)
+        parentname = model.getLinkName(parentIdx)
+        childname = model.getLinkName(childIdx)
+        joint = model.getJoint(idyn_joint_idx).asRevoluteJoint()
+        min = math.degrees(joint.getMinPosLimit(0))
+        max = math.degrees(joint.getMaxPosLimit(0))
+        direction =	joint.getAxis(childIdx,parentIdx).getDirection()
+        print( model.getJointName(idyn_joint_idx),"min:", min, "max:", max,"direction", direction)
         bparent = None
         if parentname in bone_list.keys():
             bparent = bone_list[parentname]
@@ -158,8 +163,15 @@ def main():
         #print("Adding", key, parentname, childname, parent_link_position, child_link_position,"LENGTH", bchild.length)
             
         #hide fixed_joint and ft bones (for now just in edit mode :/)
+        #print("Prima",bchild.vector)
+        print("Prima",bchild.x_axis, bchild.y_axis, bchild.z_axis )
+        bchild.align_roll(direction.toNumPy())
+        print("Prima",bchild.x_axis, bchild.y_axis, bchild.z_axis )
+        #print("Dopo",bchild.vector)
         bone_list[childname] = bchild
 
+
+    bpy.ops.object.mode_set(mode='POSE')
     # exit edit mode to save bones so they can be used in pose mode
     bpy.ops.object.mode_set(mode='OBJECT')
     
