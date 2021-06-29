@@ -53,7 +53,7 @@ def main():
     # Get the urdf and parse it
     rootp = "C:\\Users\\ngenesio\\robotology\\robotology-superbuild\\robotology\\icub-models\\iCub\\robots\\"
     
-    URDF_FILE = rootp+'iCubGazeboV2_5\\model.urdf';
+    URDF_FILE = rootp+'iCubGazeboV3\\model.urdf';
 
     dynComp = iDynTree.KinDynComputations();
     mdlLoader = iDynTree.ModelLoader();
@@ -117,7 +117,9 @@ def main():
     bpy.context.view_layer.objects.active = armature_object
     bpy.ops.object.mode_set(mode='EDIT')
     edit_bones = armature_data.data.edit_bones
-
+    
+    limits = {}
+    axis = {}
     bone_list = {}
     #print(joints)
     # Loop for defining the hierarchy
@@ -131,7 +133,7 @@ def main():
         joint = model.getJoint(idyn_joint_idx).asRevoluteJoint()
         min = math.degrees(joint.getMinPosLimit(0))
         max = math.degrees(joint.getMaxPosLimit(0))
-        direction =	joint.getAxis(childIdx,parentIdx).getDirection()
+        direction =	joint.getAxis(childIdx,parentIdx).getDirection().toNumPy()
         print( model.getJointName(idyn_joint_idx),"min:", min, "max:", max,"direction", direction)
         bparent = None
         if parentname in bone_list.keys():
@@ -160,15 +162,13 @@ def main():
 
         bchild.head = parent_link_position
         bchild.tail = child_link_position
-        #print("Adding", key, parentname, childname, parent_link_position, child_link_position,"LENGTH", bchild.length)
-            
-        #hide fixed_joint and ft bones (for now just in edit mode :/)
-        #print("Prima",bchild.vector)
-        #print("Prima",bchild.x_axis, bchild.y_axis, bchild.z_axis )
-        bchild.align_roll(direction.toNumPy())
-        #print("Prima",bchild.x_axis, bchild.y_axis, bchild.z_axis )
-        #print("Dopo",bchild.vector)
+        length = bchild.length
+        direction = mathutils.Vector(direction).normalized()
+        bchild.tail = bchild.head + direction * length 
+        
         bone_list[childname] = bchild
+        limits[model.getJointName(idyn_joint_idx)] = [min, max]
+        axis[model.getJointName(idyn_joint_idx)]   = direction
 
     
 
@@ -180,7 +180,7 @@ def main():
     for link_id in range(model.getNrOfLinks()):
         meshesInfo[model.getLinkName(link_id)] = linkVisual[link_id][0].asExternalMesh()
         filePath = meshesInfo[model.getLinkName(link_id)].getFileLocationOnLocalFileSystem()
-        bpy.ops.import_mesh.stl(filepath=os.path.join(filePath),global_scale=0.001)
+        #bpy.ops.import_mesh.stl(filepath=os.path.join(filePath),global_scale=0.001)
 
 
 
