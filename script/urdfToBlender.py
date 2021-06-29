@@ -2,6 +2,7 @@ import bpy, bmesh
 import copy
 import mathutils
 import math
+import os
 import idyntree.bindings as iDynTree
 
 def getwcoord(o):
@@ -72,6 +73,8 @@ def main():
     model = mdlLoader.model()
     traversal = iDynTree.Traversal()
     ok_traversal = model.computeFullTreeTraversal(traversal)
+    
+    linkVisual=model.visualSolidShapes().getLinkSolidShapes();
 
     dofs = dynComp.model().getNrOfDOFs();
     s = iDynTree.VectorDynSize(dofs);
@@ -114,9 +117,6 @@ def main():
     bpy.context.view_layer.objects.active = armature_object
     bpy.ops.object.mode_set(mode='EDIT')
     edit_bones = armature_data.data.edit_bones
-
-    links = {}
-    joints = []
 
     bone_list = {}
     #print(joints)
@@ -164,17 +164,26 @@ def main():
             
         #hide fixed_joint and ft bones (for now just in edit mode :/)
         #print("Prima",bchild.vector)
-        print("Prima",bchild.x_axis, bchild.y_axis, bchild.z_axis )
+        #print("Prima",bchild.x_axis, bchild.y_axis, bchild.z_axis )
         bchild.align_roll(direction.toNumPy())
-        print("Prima",bchild.x_axis, bchild.y_axis, bchild.z_axis )
+        #print("Prima",bchild.x_axis, bchild.y_axis, bchild.z_axis )
         #print("Dopo",bchild.vector)
         bone_list[childname] = bchild
 
+    
 
     bpy.ops.object.mode_set(mode='POSE')
     # exit edit mode to save bones so they can be used in pose mode
     bpy.ops.object.mode_set(mode='OBJECT')
     
+    meshesInfo = {}
+    for link_id in range(model.getNrOfLinks()):
+        meshesInfo[model.getLinkName(link_id)] = linkVisual[link_id][0].asExternalMesh()
+        filePath = meshesInfo[model.getLinkName(link_id)].getFileLocationOnLocalFileSystem()
+        bpy.ops.import_mesh.stl(filepath=os.path.join(filePath),global_scale=0.001)
+
+
+
 
     # make the custom bone shape
     #bm = bmesh.new()
