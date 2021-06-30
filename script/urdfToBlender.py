@@ -117,12 +117,12 @@ def main():
     bpy.context.view_layer.objects.active = armature_object
     bpy.ops.object.mode_set(mode='EDIT')
     edit_bones = armature_data.data.edit_bones
+    pose_bones = armature_data.pose.bones
     
     limits = {}
-    axis = {}
     bone_list = {}
     #print(joints)
-    # Loop for defining the hierarchy
+    # Loop for defining the hierarchy of the bonse and its locations
     for idyn_joint_idx in range(model.getNrOfJoints()):
         parentIdx = traversal.getParentLinkIndexFromJointIndex(model,
                                                                idyn_joint_idx)
@@ -131,10 +131,9 @@ def main():
         parentname = model.getLinkName(parentIdx)
         childname = model.getLinkName(childIdx)
         joint = model.getJoint(idyn_joint_idx).asRevoluteJoint()
-        min = math.degrees(joint.getMinPosLimit(0))
-        max = math.degrees(joint.getMaxPosLimit(0))
+        min = joint.getMinPosLimit(0)
+        max = joint.getMaxPosLimit(0)
         direction =	joint.getAxis(childIdx,parentIdx).getDirection().toNumPy()
-        print( model.getJointName(idyn_joint_idx),"min:", min, "max:", max,"direction", direction)
         bparent = None
         if parentname in bone_list.keys():
             bparent = bone_list[parentname]
@@ -167,12 +166,40 @@ def main():
         bchild.tail = bchild.head + direction * length 
         
         bone_list[childname] = bchild
-        limits[model.getJointName(idyn_joint_idx)] = [min, max]
-        axis[model.getJointName(idyn_joint_idx)]   = direction
+        # Consider the y-axis orientation in the limits
+        limit_y_lower = min if (direction[1] > 0) else -max
+        limit_y_upper = max if (direction[1] > 0) else -min
+        limits[model.getJointName(idyn_joint_idx)] = [limit_y_lower, limit_y_upper]
 
-    
 
+    # configure the bones limits    
     bpy.ops.object.mode_set(mode='POSE')
+    for pbone in pose_bones:
+        bone_name = pbone.basename
+        pbone.lock_location = (True, True, True)
+        pbone.lock_rotation = (True, True, True)
+        pbone.lock_scale = (True, True, True)
+        
+        # root_link is fixed
+        if bone_name == "root_link":
+            continue
+        
+        c = pbone.constraints.new('LIMIT_ROTATION')
+        c.owner_space = 'LOCAL'
+
+        # The bones should rotate around y-axis
+        pbone.lock_rotation[1] = False
+        lim = limits[bone_name]
+        if lim:
+            c.use_limit_y = True
+            # TODO maybe we have to put also the ik constraints ???
+            print(bone_name, math.degrees(lim[0]), math.degrees(lim[1]))
+            c.min_y = lim[0] # min
+            c.max_y = lim[1] # max
+        
+        # TODO not sure if it is the right rotation_mode
+        pbone.rotation_mode = 'XYZ' 
+        
     # exit edit mode to save bones so they can be used in pose mode
     bpy.ops.object.mode_set(mode='OBJECT')
     
