@@ -13,7 +13,7 @@ def main():
     # Get the urdf and parse it
     rootp = "C:\\Users\\ngenesio\\robotology\\robotology-superbuild\\robotology\\icub-models\\iCub\\robots\\"
     
-    URDF_FILE = rootp+'iCubGazeboV3\\model.urdf';
+    URDF_FILE = rootp+'iCubGazeboV2_5\\model.urdf';
 
     dynComp = iDynTree.KinDynComputations();
     mdlLoader = iDynTree.ModelLoader();
@@ -205,9 +205,31 @@ def main():
         meshMap[linkname] = meshName
     
     # just for checking that the map link->mesh is ok.
-    for k,v in meshMap.items():
-        print(k,v)
-
+    #for k,v in meshMap.items():
+    #    print(k,v)
+    
+    # Place the meshes
+    for link_id in range(model.getNrOfLinks()):
+        linkname = model.getLinkName(link_id)
+        meshname = meshMap[linkname]
+        meshobj = bpy.data.objects[meshname]
+        # root->link transform
+        RtoLinktransform = dynComp.getRelativeTransform("root_link", linkname)
+        #RtoLinklocation = RtoLinktransform.getPosition().toNumPy()
+        #RtoLinkrotation = RtoLinktransform.getRotation().asQuaternion()
+        # link->geometry transform
+        LinkToGtransform = meshesInfo[linkname].getLink_H_geometry()
+        # root->geometry transform
+        RToGtransform = RtoLinktransform * LinkToGtransform
+        
+        meshobj.location = RToGtransform.getPosition().toNumPy()
+        meshobj.rotation_mode = "QUATERNION"
+        meshobj.rotation_quaternion = RToGtransform.getRotation().asQuaternion()
+        #print(meshesInfo[linkname].getLink_H_geometry())
+        #print(bone_list[linkname].name)
+        #bpy.data.objects[meshname].parent_type = 'BONE'
+       #bpy.data.objects[meshname].parent   = bpy.data.objects[linkname]
+    
 
 
     # make the custom bone shape
