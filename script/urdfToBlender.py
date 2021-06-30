@@ -5,46 +5,6 @@ import math
 import os
 import idyntree.bindings as iDynTree
 
-def getwcoord(o):
-    return o.GetMg().off
-
-def setwcoord(o, v):
-    o.SetRelPos(v * ~o.GetUpMg())
-    return getwcoord(o)
-
-def GetTag(taglist, root):
-    if len(taglist) == 0:
-        return root
-    else:
-        r = [i for i in root if i.tag == taglist[0]]
-        taglist.pop(0)
-
-    if len(r):
-        return GetTag(taglist, r[0])
-    else:
-        return None
-
-def get_all_objects(op, output):
-    while op:
-        output.append(op)
-        get_all_objects(op.GetDown(), output)
-        op = op.GetNext()
-    return output
-
-def axisrot(v, op):
-    op.SetMl(MatrixRotX(v.x)*MatrixRotX(v.y)*MatrixRotX(v.z))
-
-
-def applyrot(o, p):
-    o.SetMg(MatrixRotX(p.x))
-    o.SetMg(MatrixRotY(p.y) * o.GetMg())
-    o.SetMg(MatrixRotZ(p.z) * o.GetMg())
-
-def applyrotl(o, p):
-    o.SetMl(MatrixRotX(p.x))
-    o.SetMl(MatrixRotY(p.y) * o.GetMl())
-    o.SetMl(MatrixRotZ(p.z) * o.GetMl())
-
 
 
 # Main function
