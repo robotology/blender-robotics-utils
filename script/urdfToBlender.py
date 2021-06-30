@@ -153,7 +153,7 @@ def main():
         if lim:
             c.use_limit_y = True
             # TODO maybe we have to put also the ik constraints ???
-            print(bone_name, math.degrees(lim[0]), math.degrees(lim[1]))
+            #print(bone_name, math.degrees(lim[0]), math.degrees(lim[1]))
             c.min_y = lim[0] # min
             c.max_y = lim[1] # max
         
@@ -162,13 +162,51 @@ def main():
         
     # exit edit mode to save bones so they can be used in pose mode
     bpy.ops.object.mode_set(mode='OBJECT')
-    
+    meshMap = {}
     meshesInfo = {}
+    
+    # Remove meshes leftovers
+    collection_name = "Collection"
+    # Get the collection from its name
+    collection = bpy.data.collections[collection_name]
+
+    # Will collect meshes from delete objects
+    meshes = set()
+
+    # Get objects in the collection if they are meshes
+    for obj in [o for o in collection.objects if o.type == 'MESH']:
+        # Store the internal mesh
+        meshes.add( obj.data )
+        # Delete the object
+        bpy.data.objects.remove( obj )
+
+    # Look at meshes that are orphean after objects removal
+    for mesh in [m for m in meshes if m.users == 0]:
+        # Delete the meshes
+        bpy.data.meshes.remove( mesh )
+    
+    # import meshes and do the mapping to the link
     for link_id in range(model.getNrOfLinks()):
         meshesInfo[model.getLinkName(link_id)] = linkVisual[link_id][0].asExternalMesh()
         filePath = meshesInfo[model.getLinkName(link_id)].getFileLocationOnLocalFileSystem()
-        #bpy.ops.import_mesh.stl(filepath=os.path.join(filePath),global_scale=0.001)
-
+        linkname = model.getLinkName(link_id)
+        # import the mesh
+        bpy.ops.import_mesh.stl(filepath=os.path.join(filePath),global_scale=0.001)
+        meshName = ""
+        # We are assuming we are starting in a clean environment
+        if not meshMap.keys() :
+            meshName = bpy.data.meshes.keys()[0]
+            print(linkname, meshName)
+        else:
+            for mesh in bpy.data.meshes:
+                if mesh.name not in meshMap.values():
+                    meshName = mesh.name
+                    break
+        meshMap[linkname] = meshName
+    
+    # just for checking that the map link->mesh is ok.
+    for k,v in meshMap.items():
+        print(k,v)
 
 
 
