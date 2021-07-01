@@ -13,7 +13,7 @@ def main():
     # Get the urdf and parse it
     rootp = "C:\\Users\\ngenesio\\robotology\\robotology-superbuild\\robotology\\icub-models\\iCub\\robots\\"
     
-    URDF_FILE = rootp+'iCubGazeboV2_5\\model.urdf';
+    URDF_FILE = rootp+'iCubGazeboV3\\model.urdf';
 
     dynComp = iDynTree.KinDynComputations();
     mdlLoader = iDynTree.ModelLoader();
@@ -215,8 +215,6 @@ def main():
         meshobj = bpy.data.objects[meshname]
         # root->link transform
         RtoLinktransform = dynComp.getRelativeTransform("root_link", linkname)
-        #RtoLinklocation = RtoLinktransform.getPosition().toNumPy()
-        #RtoLinkrotation = RtoLinktransform.getRotation().asQuaternion()
         # link->geometry transform
         LinkToGtransform = meshesInfo[linkname].getLink_H_geometry()
         # root->geometry transform
@@ -230,8 +228,33 @@ def main():
         #bpy.data.objects[meshname].parent_type = 'BONE'
        #bpy.data.objects[meshname].parent   = bpy.data.objects[linkname]
     
+    # Now iterate over all the joints(bones) and link them to the meshes.
+    for idyn_joint_idx in range(model.getNrOfJoints()):
+        # The joint should move the child link(?)
+        childIdx = traversal.getChildLinkIndexFromJointIndex(model,
+                                                              idyn_joint_idx)
+        childname = model.getLinkName(childIdx)
+        jointname = model.getJointName(idyn_joint_idx)
+        meshname = meshMap[childname]
+        meshobj = bpy.data.objects[meshname]
 
+        bpy.ops.object.select_all(action='DESELECT')
+        armature_data.select_set(True)
+        bpy.context.view_layer.objects.active = armature_data 
 
+        bpy.ops.object.mode_set(mode='EDIT')
+
+        edit_bones.active = edit_bones[jointname]
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        bpy.ops.object.select_all(action='DESELECT') #deselect all objects
+        meshobj.select_set(True)
+        armature_data.select_set(True)
+        bpy.context.view_layer.objects.active = armature_data     #the active object will be the parent of all selected object
+
+        bpy.ops.object.parent_set(type='BONE', keep_transform=True)
+        
     # make the custom bone shape
     #bm = bmesh.new()
     #bmesh.ops.create_circle(bm, cap_ends=False, diameter=0.2, segments=8)
