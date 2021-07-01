@@ -13,7 +13,7 @@ def main():
     # Get the urdf and parse it
     rootp = "C:\\Users\\ngenesio\\robotology\\robotology-superbuild\\robotology\\icub-models\\iCub\\robots\\"
     
-    URDF_FILE = rootp+'iCubGazeboV3\\model.urdf';
+    URDF_FILE = rootp+'iCubGazeboV2_5\\model.urdf';
 
     dynComp = iDynTree.KinDynComputations();
     mdlLoader = iDynTree.ModelLoader();
@@ -122,6 +122,8 @@ def main():
         bchild.head = parent_link_position
         bchild.tail = child_link_position
         length = bchild.length
+        if length == 0.0:
+            length = 0.01 # bones with zero length are deleted by Blender
         direction = mathutils.Vector(direction).normalized()
         bchild.tail = bchild.head + direction * length 
         
