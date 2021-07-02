@@ -19,21 +19,15 @@ def main():
     mdlLoader = iDynTree.ModelLoader();
     mdlExporter = iDynTree.ModelExporter();
     mdlLoader.loadModelFromFile(URDF_FILE);
-    # Remove fixed joints
-    considered_joints = []
-    for j_id in range(mdlLoader.model().getNrOfJoints()):
-        joint = mdlLoader.model().getJoint(j_id)
-        joint_name = mdlLoader.model().getJointName(j_id)
-        if joint.getNrOfDOFs() == 0:
-            continue
-        considered_joints.append(joint_name)
         
     # Produce the reduced urdf    
-    mdlLoader.loadReducedModelFromFullModel(mdlLoader.model(), considered_joints)
     model = mdlLoader.model()
     traversal = iDynTree.Traversal()
     ok_traversal = model.computeFullTreeTraversal(traversal)
-    
+    print(ok_traversal)
+    if not ok_traversal:
+        print("Failed to compute the traversal!")
+        return 0
     linkVisual=model.visualSolidShapes().getLinkSolidShapes();
 
     dofs = dynComp.model().getNrOfDOFs();
@@ -57,7 +51,6 @@ def main():
     dynComp.loadRobotModel(mdlLoader.model());
     print("The loaded model has", dynComp.model().getNrOfDOFs(), \
     "internal degrees of freedom and",dynComp.model().getNrOfLinks(),"links.")
-
     # Define the armature
     # Create armature and armature object
     armature_name = "iCub"
@@ -72,7 +65,6 @@ def main():
 
     #Make a coding shortcut
     armature_data = bpy.data.objects[armature_name]
-
     # must be in edit mode to add bones
     bpy.context.view_layer.objects.active = armature_object
     bpy.ops.object.mode_set(mode='EDIT')
@@ -81,7 +73,6 @@ def main():
     
     limits = {}
     bone_list = {}
-    #print(joints)
     # Loop for defining the hierarchy of the bonse and its locations
     for idyn_joint_idx in range(model.getNrOfJoints()):
         parentIdx = traversal.getParentLinkIndexFromJointIndex(model,
@@ -90,10 +81,25 @@ def main():
                                                               idyn_joint_idx)
         parentname = model.getLinkName(parentIdx)
         childname = model.getLinkName(childIdx)
-        joint = model.getJoint(idyn_joint_idx).asRevoluteJoint()
+        joint = model.getJoint(idyn_joint_idx)
+        jointtype = ""
+        if joint.isRevoluteJoint():
+            joint = joint.asRevoluteJoint()
+            jointtype = "REVOLUTE" 
+            direction =	joint.getAxis(childIdx,parentIdx).getDirection().toNumPy()
+        # This is missing from idyntree api :(
+        #elif joint.isPrismaticJoint():
+        #    joint = joint.asPrismaticJoint()
+        #    jointtype = "PRISMATIC"
+        elif joint.isFixedJoint():
+            joint = joint.asFixedJoint()
+            jointtype = "FIXED"
+        #else:
+        #    joint = joint.asRevoluteJoint()
+        #    jointtype = "REVOLUTE" 
+        #    direction =	joint.getAxis(childIdx,parentIdx).getDirection().toNumPy()
         min = joint.getMinPosLimit(0)
-        max = joint.getMaxPosLimit(0)
-        direction =	joint.getAxis(childIdx,parentIdx).getDirection().toNumPy()
+        max = joint.getMaxPosLimit(0)    
         bparent = None
         if parentname in bone_list.keys():
             bparent = bone_list[parentname]
@@ -103,7 +109,11 @@ def main():
                     childname_prev = model.getLinkName(traversal.getChildLinkIndexFromJointIndex(model,
                                                                          i))
                     if childname_prev == parentname:
-                        bparent = edit_bones.new(model.getJointName(i))
+                        bonename = model.getJointName(i)
+                        if bonename not in edit_bones.keys():
+                            bparent = edit_bones.new(bonename)
+                        else:
+                            bparent = edit_bones[bonename]
                         break
             else:
                 bparent = edit_bones.new(parentname)
@@ -111,8 +121,13 @@ def main():
             bparent.head = (0,0,0)
             bparent.tail = (0,0,-0.01)
             bone_list[parentname] = bparent
-
-        bchild = edit_bones.new(model.getJointName(idyn_joint_idx))
+        
+        bonename = model.getJointName(idyn_joint_idx)
+        if bonename not in edit_bones.keys():
+            bchild = edit_bones.new(bonename)
+        else:
+            bchild = edit_bones[bonename]
+        
         if bparent:
             bchild.parent = bparent
         
@@ -121,18 +136,18 @@ def main():
 
         bchild.head = parent_link_position
         bchild.tail = child_link_position
-        length = bchild.length
-        if length == 0.0:
-            length = 0.01 # bones with zero length are deleted by Blender
-        direction = mathutils.Vector(direction).normalized()
-        bchild.tail = bchild.head + direction * length 
+        if jointtype != "FIXED":
+            length = bchild.length
+            if length == 0.0:
+                length = 0.01 # bones with zero length are deleted by Blender
+            direction = mathutils.Vector(direction).normalized()
+            bchild.tail = bchild.head + direction * length 
         
         bone_list[childname] = bchild
         # Consider the y-axis orientation in the limits
         limit_y_lower = min if (direction[1] > 0) else -max
         limit_y_upper = max if (direction[1] > 0) else -min
-        limits[model.getJointName(idyn_joint_idx)] = [limit_y_lower, limit_y_upper]
-
+        limits[model.getJointName(idyn_joint_idx)] = [limit_y_lower, limit_y_upper, jointtype]
 
     # configure the bones limits    
     bpy.ops.object.mode_set(mode='POSE')
@@ -141,17 +156,23 @@ def main():
         pbone.lock_location = (True, True, True)
         pbone.lock_rotation = (True, True, True)
         pbone.lock_scale = (True, True, True)
-        
-        # root_link is fixed
+        # root_link is a special case, it is a bone that has not correspondences to the joints
         if bone_name == "root_link":
+            continue
+        lim = limits[bone_name]
+        # check the nr of DOFs
+        if lim[2] == "FIXED" :
             continue
         
         c = pbone.constraints.new('LIMIT_ROTATION')
         c.owner_space = 'LOCAL'
-
-        # The bones should rotate around y-axis
-        pbone.lock_rotation[1] = False
-        lim = limits[bone_name]
+        
+        if lim[2] == "REVOLUTE":
+            # The bones should rotate around y-axis
+            pbone.lock_rotation[1] = False
+        elif lim[2] == "PRISMATIC":
+            # The bones should move along y-axis
+            pbone.lock_location[1] = False
         if lim:
             c.use_limit_y = True
             # TODO maybe we have to put also the ik constraints ???
@@ -174,19 +195,16 @@ def main():
 
     # Will collect meshes from delete objects
     meshes = set()
-
     # Get objects in the collection if they are meshes
     for obj in [o for o in collection.objects if o.type == 'MESH']:
         # Store the internal mesh
         meshes.add( obj.data )
         # Delete the object
         bpy.data.objects.remove( obj )
-
     # Look at meshes that are orphean after objects removal
     for mesh in [m for m in meshes if m.users == 0]:
         # Delete the meshes
         bpy.data.meshes.remove( mesh )
-    
     # import meshes and do the mapping to the link
     for link_id in range(model.getNrOfLinks()):
         meshesInfo[model.getLinkName(link_id)] = linkVisual[link_id][0].asExternalMesh()
@@ -198,7 +216,6 @@ def main():
         # We are assuming we are starting in a clean environment
         if not meshMap.keys() :
             meshName = bpy.data.meshes.keys()[0]
-            print(linkname, meshName)
         else:
             for mesh in bpy.data.meshes:
                 if mesh.name not in meshMap.values():
@@ -209,7 +226,7 @@ def main():
     # just for checking that the map link->mesh is ok.
     #for k,v in meshMap.items():
     #    print(k,v)
-    
+
     # Place the meshes
     for link_id in range(model.getNrOfLinks()):
         linkname = model.getLinkName(link_id)
@@ -255,8 +272,7 @@ def main():
         armature_data.select_set(True)
         bpy.context.view_layer.objects.active = armature_data     #the active object will be the parent of all selected object
 
-        bpy.ops.object.parent_set(type='BONE', keep_transform=True)
-        
+        bpy.ops.object.parent_set(type='BONE', keep_transform=True)        
     # make the custom bone shape
     #bm = bmesh.new()
     #bmesh.ops.create_circle(bm, cap_ends=False, diameter=0.2, segments=8)
