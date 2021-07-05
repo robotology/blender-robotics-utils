@@ -131,8 +131,11 @@ def main():
         if bparent:
             bchild.parent = bparent
         
-        parent_link_position = dynComp.getRelativeTransform("root_link", parentname).getPosition().toNumPy();
-        child_link_position  = dynComp.getRelativeTransform("root_link", childname).getPosition().toNumPy();
+        parent_link_transform = dynComp.getRelativeTransform("root_link", parentname)
+        parent_link_position  = parent_link_transform.getPosition().toNumPy();
+        child_link_transform  = dynComp.getRelativeTransform("root_link", childname)
+        child_link_position   = child_link_transform.getPosition().toNumPy();
+        child_link_rotation   = mathutils.Matrix(child_link_transform.getRotation().toNumPy());
 
         bchild.head = parent_link_position
         bchild.tail = child_link_position
@@ -141,6 +144,7 @@ def main():
             if length == 0.0:
                 length = 0.01 # bones with zero length are deleted by Blender
             direction = mathutils.Vector(direction).normalized()
+            direction.rotate(child_link_rotation)
             bchild.tail = bchild.head + direction * length 
         
         bone_list[childname] = bchild
@@ -206,6 +210,7 @@ def main():
         # Delete the meshes
         bpy.data.meshes.remove( mesh )
     # import meshes and do the mapping to the link
+    
     for link_id in range(model.getNrOfLinks()):
         meshesInfo[model.getLinkName(link_id)] = linkVisual[link_id][0].asExternalMesh()
         filePath = meshesInfo[model.getLinkName(link_id)].getFileLocationOnLocalFileSystem()
@@ -272,21 +277,7 @@ def main():
         armature_data.select_set(True)
         bpy.context.view_layer.objects.active = armature_data     #the active object will be the parent of all selected object
 
-        bpy.ops.object.parent_set(type='BONE', keep_transform=True)        
-    # make the custom bone shape
-    #bm = bmesh.new()
-    #bmesh.ops.create_circle(bm, cap_ends=False, diameter=0.2, segments=8)
-    #me = bpy.data.meshes.new("Mesh")
-    #bm.to_mesh(me)
-    #bm.free()
-    #b2_shape = bpy.data.objects.new("bone2_shape", me)
-    #bpy.context.scene.objects.link(b2_shape)
-    #b2_shape.layers = [False]*19+[True]
-
-    # use pose.bones for custom shape
-    #arm_obj.pose.bones['bone2'].custom_shape = b2_shape
-    # use data.bones for show_wire
-    #arm_obj.data.bones['bone2'].show_wire = True
+        bpy.ops.object.parent_set(type='BONE', keep_transform=True)       
 
 
 
