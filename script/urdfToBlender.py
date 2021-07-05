@@ -212,11 +212,20 @@ def main():
     # import meshes and do the mapping to the link
     
     for link_id in range(model.getNrOfLinks()):
+        if len(linkVisual[link_id]) == 0:
+            continue
+        if not linkVisual[link_id][0].isExternalMesh():
+            continue
         meshesInfo[model.getLinkName(link_id)] = linkVisual[link_id][0].asExternalMesh()
         filePath = meshesInfo[model.getLinkName(link_id)].getFileLocationOnLocalFileSystem()
         linkname = model.getLinkName(link_id)
         # import the mesh
-        bpy.ops.import_mesh.stl(filepath=os.path.join(filePath),global_scale=0.001)
+        if ".stl" in filePath:
+            bpy.ops.import_mesh.stl(filepath=os.path.join(filePath),global_scale=0.001)
+        elif ".ply" in filePath:
+            bpy.ops.import_mesh.ply(filepath=os.path.join(filePath),global_scale=0.001)
+        elif ".dae" in filePath:
+            bpy.ops.wm.collada_import(filepath=os.path.join(filePath)) #TODO check how to handle scale here !
         meshName = ""
         # We are assuming we are starting in a clean environment
         if not meshMap.keys() :
