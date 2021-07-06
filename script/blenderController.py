@@ -36,7 +36,7 @@ def move(dummy):
     iposDir = bpy.types.Scene.iposDir
     ipos    = bpy.types.Scene.ipos
     ienc    = bpy.types.Scene.ienc
-    encs    = bpy.types.Scene.iposDir.encs
+    encs    = bpy.types.Scene.encs
     # Get the targets from the rig
     target_pitch = math.degrees(bpy.data.objects["iCub"].pose.bones["neck_pitch"].rotation_euler[1])
     target_roll  = math.degrees(bpy.data.objects["iCub"].pose.bones["neck_roll"].rotation_euler[1])
@@ -51,20 +51,37 @@ def move(dummy):
         # Pause the animation
         bpy.ops.screen.animation_cancel(True) # We have to check if it is ok
         # Switch to position control and move to the target
-        icm.setControlModes([yarp.VOCAB_CM_POSITION, yarp.VOCAB_CM_POSITION, yarp.VOCAB_CM_POSITION])
-        ipos.setRefSpeeds([10, 10, 10])
-        ipos.positionMove([target_pitch, target_roll, target_yaw])
-        done = False
+        # TODO try to find a way to use the s methods
+        icm.setControlMode(0, yarp.VOCAB_CM_POSITION)
+        icm.setControlMode(1, yarp.VOCAB_CM_POSITION)
+        icm.setControlMode(2, yarp.VOCAB_CM_POSITION)
+        ipos.setRefSpeed(0,10)
+        ipos.setRefSpeed(1,10)
+        ipos.setRefSpeed(2,10)
+        ipos.positionMove(0,target_pitch)
+        ipos.positionMove(1,target_roll)
+        ipos.positionMove(2,target_yaw)
+        done0 = False
+        done1 = False
+        done2 = False
         # Await that the movement is finished
-        ipos.checkMotionDone(done)
-        while not done:
-            ipos.checkMotionDone(done)
+        ipos.checkMotionDone(0, done0)
+        ipos.checkMotionDone(1, done1)
+        ipos.checkMotionDone(2, done2)
+        while not (done0 and done1 and done2):
+            ipos.checkMotionDone(0, done0)
+            ipos.checkMotionDone(1, done1)
+            ipos.checkMotionDone(2, done2)
             yarp.delay(0.001);
         # Once finished put the joints in position direct and replay the animation back
-        icm.setControlModes([yarp.VOCAB_CM_POSITION_DIRECT, yarp.VOCAB_CM_POSITION_DIRECT, yarp.VOCAB_CM_POSITION_DIRECT])
+        icm.setControlMode(0, yarp.VOCAB_CM_POSITION_DIRECT)
+        icm.setControlMode(1, yarp.VOCAB_CM_POSITION_DIRECT)
+        icm.setControlMode(2, yarp.VOCAB_CM_POSITION_DIRECT)
         bpy.ops.screen.animation_play()
     else:
-        iposDir.setPositions([target_pitch, target_roll, target_yaw]);
+        iposDir.setPosition(0,target_pitch)
+        iposDir.setPosition(1,target_roll)
+        iposDir.setPosition(2,target_yaw)
 
 if __name__ == "__main__":
 
@@ -107,7 +124,9 @@ if __name__ == "__main__":
         sys.exit()
 
     encs = yarp.Vector(ipos.getAxes())
-    icm.setControlModes([yarp.VOCAB_CM_POSITION_DIRECT, yarp.VOCAB_CM_POSITION_DIRECT, yarp.VOCAB_CM_POSITION_DIRECT])
+    icm.setControlMode(0, yarp.VOCAB_CM_POSITION_DIRECT)
+    icm.setControlMode(1, yarp.VOCAB_CM_POSITION_DIRECT)
+    icm.setControlMode(2, yarp.VOCAB_CM_POSITION_DIRECT)
 
     register(driver, icm, iposDir, ipos, ienc, encs)
 
