@@ -49,7 +49,7 @@ def move(dummy):
     if abs(encs[0] - target_pitch) > threshold or abs(encs[1] - target_roll) > threshold or abs(encs[2] - target_yaw) > threshold:
         print("The target is too far, reaching in position control")
         # Pause the animation
-        bpy.ops.screen.animation_cancel(True) # We have to check if it is ok
+        bpy.ops.screen.animation_play() # We have to check if it is ok
         # Switch to position control and move to the target
         # TODO try to find a way to use the s methods
         icm.setControlMode(0, yarp.VOCAB_CM_POSITION)
@@ -61,17 +61,13 @@ def move(dummy):
         ipos.positionMove(0,target_pitch)
         ipos.positionMove(1,target_roll)
         ipos.positionMove(2,target_yaw)
-        done0 = False
-        done1 = False
-        done2 = False
-        # Await that the movement is finished
-        ipos.checkMotionDone(0, done0)
-        ipos.checkMotionDone(1, done1)
-        ipos.checkMotionDone(2, done2)
+        done0 = ipos.isMotionDone(0)
+        done1 = ipos.isMotionDone(1)
+        done2 = ipos.isMotionDone(2)
         while not (done0 and done1 and done2):
-            ipos.checkMotionDone(0, done0)
-            ipos.checkMotionDone(1, done1)
-            ipos.checkMotionDone(2, done2)
+            done0 = ipos.isMotionDone(0)
+            done1 = ipos.isMotionDone(1)
+            done2 = ipos.isMotionDone(2)
             yarp.delay(0.001);
         # Once finished put the joints in position direct and replay the animation back
         icm.setControlMode(0, yarp.VOCAB_CM_POSITION_DIRECT)
