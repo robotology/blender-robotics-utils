@@ -10,13 +10,14 @@ import numpy as np
 import bpy
 import math
 
-def register(driver, icm, iposDir, ipos, ienc, encs):
+def register(driver, icm, iposDir, ipos, ienc, encs, iax):
     bpy.types.Scene.driver = driver
     bpy.types.Scene.icm = icm
     bpy.types.Scene.iposDir = iposDir
     bpy.types.Scene.ipos = ipos
     bpy.types.Scene.ienc = ienc
     bpy.types.Scene.encs = encs
+    bpy.types.Scene.iax = iax
 
 def unregister():
     try:
@@ -26,6 +27,7 @@ def unregister():
         del bpy.types.Scene.ipos
         del bpy.types.Scene.ienc
         del bpy.types.Scene.encs
+        del bpy.types.Scene.iax
     except:
         pass
 
@@ -37,16 +39,18 @@ def move(dummy):
     ipos    = bpy.types.Scene.ipos
     ienc    = bpy.types.Scene.ienc
     encs    = bpy.types.Scene.encs
+    iax     = bpy.types.Scene.iax
     # Get the targets from the rig
-    target_pitch = math.degrees(bpy.data.objects["iCub"].pose.bones["neck_pitch"].rotation_euler[1])
-    target_roll  = math.degrees(bpy.data.objects["iCub"].pose.bones["neck_roll"].rotation_euler[1])
-    target_yaw   = math.degrees(bpy.data.objects["iCub"].pose.bones["neck_yaw"].rotation_euler[1])
+    target_0 = math.degrees(bpy.data.objects["iCub"].pose.bones[iax.getAxisName(0)].rotation_euler[1])
+    target_1 = math.degrees(bpy.data.objects["iCub"].pose.bones[iax.getAxisName(1)].rotation_euler[1])
+    target_2 = math.degrees(bpy.data.objects["iCub"].pose.bones[iax.getAxisName(2)].rotation_euler[1])
+    
     # Read the current state of the robot
     ok_enc = ienc.getEncoders(encs.data())
     if not ok_enc:
         print("I cannot read the encoders, skipping")
         return
-    if abs(encs[0] - target_pitch) > threshold or abs(encs[1] - target_roll) > threshold or abs(encs[2] - target_yaw) > threshold:
+    if abs(encs[0] - target_0) > threshold or abs(encs[1] - target_1) > threshold or abs(encs[2] - target_2) > threshold:
         print("The target is too far, reaching in position control")
         # Pause the animation
         bpy.ops.screen.animation_play() # We have to check if it is ok
@@ -58,9 +62,9 @@ def move(dummy):
         ipos.setRefSpeed(0,10)
         ipos.setRefSpeed(1,10)
         ipos.setRefSpeed(2,10)
-        ipos.positionMove(0,target_pitch)
-        ipos.positionMove(1,target_roll)
-        ipos.positionMove(2,target_yaw)
+        ipos.positionMove(0,target_0)
+        ipos.positionMove(1,target_1)
+        ipos.positionMove(2,target_2)
         done0 = ipos.isMotionDone(0)
         done1 = ipos.isMotionDone(1)
         done2 = ipos.isMotionDone(2)
@@ -75,16 +79,19 @@ def move(dummy):
         icm.setControlMode(2, yarp.VOCAB_CM_POSITION_DIRECT)
         bpy.ops.screen.animation_play()
     else:
-        iposDir.setPosition(0,target_pitch)
-        iposDir.setPosition(1,target_roll)
-        iposDir.setPosition(2,target_yaw)
+        iposDir.setPosition(0,target_0)
+        iposDir.setPosition(1,target_1)
+        iposDir.setPosition(2,target_2)
 
 if __name__ == "__main__":
 
     yarp.Network.init()
 
     unregister()
-
+    
+    bpy.ops.object.mode_set(mode='POSE')
+    bpy.context.scene.transform_orientation_slots[0].type = 'LOCAL'
+    
     if not yarp.Network.checkNetwork():
         print ('YARP server is not running!')
         sys.exit()
@@ -115,16 +122,19 @@ if __name__ == "__main__":
     iposDir = driver.viewIPositionDirect()
     ipos = driver.viewIPositionControl()
     ienc = driver.viewIEncoders()
-    if ienc is None or ipos is None or icm is None or iposDir is None:
+    iax = driver.viewIAxisInfo()
+    if ienc is None or ipos is None or icm is None or iposDir is None or iax is None:
         print ('Cannot view one of the interfaces!')
         sys.exit()
+
+
 
     encs = yarp.Vector(ipos.getAxes())
     icm.setControlMode(0, yarp.VOCAB_CM_POSITION_DIRECT)
     icm.setControlMode(1, yarp.VOCAB_CM_POSITION_DIRECT)
     icm.setControlMode(2, yarp.VOCAB_CM_POSITION_DIRECT)
 
-    register(driver, icm, iposDir, ipos, ienc, encs)
+    register(driver, icm, iposDir, ipos, ienc, encs, iax)
 
     bpy.app.handlers.frame_change_post.clear()
     bpy.app.handlers.frame_change_post.append(move)
