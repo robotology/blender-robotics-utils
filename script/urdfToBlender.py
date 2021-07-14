@@ -136,15 +136,19 @@ def main():
         child_link_transform  = dynComp.getRelativeTransform("root_link", childname)
         child_link_position   = child_link_transform.getPosition().toNumPy();
         child_link_rotation   = mathutils.Matrix(child_link_transform.getRotation().toNumPy());
-
+        
+        # Start defining the bone like parent->child link
         bchild.head = parent_link_position
         bchild.tail = child_link_position
-        if jointtype != "FIXED":
+        if jointtype == "REVOLUTE":
             length = bchild.length
             if length == 0.0:
                 length = 0.01 # bones with zero length are deleted by Blender
             direction = mathutils.Vector(direction).normalized()
             direction.rotate(child_link_rotation)
+            # In our representation the revolute joint is a bone placed in the child origin
+            # oriented towards the axis of the joint.
+            bchild.head = child_link_position
             bchild.tail = bchild.head + direction * length 
         
         bone_list[childname] = bchild
