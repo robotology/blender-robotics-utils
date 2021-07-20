@@ -5,20 +5,17 @@ import math
 import os
 import idyntree.bindings as iDynTree
 
+from bpy.props import StringProperty, BoolProperty
+from bpy_extras.io_utils import ImportHelper
+from bpy.types import Operator
 
 
-# Main function
-def main():
-
+def rigify(path):
     # Get the urdf and parse it
-    rootp = "C:\\Users\\ngenesio\\robotology\\robotology-superbuild\\robotology\\icub-models\\iCub\\robots\\"
-    
-    URDF_FILE = rootp+'iCubGazeboV2_5\\model.urdf';
-
     dynComp = iDynTree.KinDynComputations();
     mdlLoader = iDynTree.ModelLoader();
     mdlExporter = iDynTree.ModelExporter();
-    mdlLoader.loadModelFromFile(URDF_FILE);
+    mdlLoader.loadModelFromFile(path);
         
     # Produce the reduced urdf    
     model = mdlLoader.model()
@@ -291,9 +288,45 @@ def main():
         bpy.context.view_layer.objects.active = armature_data     #the active object will be the parent of all selected object
 
         bpy.ops.object.parent_set(type='BONE', keep_transform=True)       
+    # Set in pose mode and select local
+    bpy.ops.object.mode_set(mode='POSE')
+    bpy.context.scene.transform_orientation_slots[0].type = 'LOCAL'
 
 
+class OT_TestOpenFilebrowser(Operator, ImportHelper):
 
+    bl_idname = "test.open_filebrowser"
+    bl_label = "Select the urdf"
+    
+    filter_glob: StringProperty(
+        default='*.urdf',
+        options={'HIDDEN'}
+    )
+
+    def execute(self, context):
+        """Do something with the selected file(s)."""
+
+        filename, extension = os.path.splitext(self.filepath)
+        
+        print('Selected file:', self.filepath)
+        print('File name:', filename)
+        print('File extension:', extension)
+        rigify(self.filepath)
+        
+        return {'FINISHED'}
+
+
+def register():
+    bpy.utils.register_class(OT_TestOpenFilebrowser)
+
+def unregister():
+    bpy.utils.unregister_class(OT_TestOpenFilebrowser)
+
+# Main function
+def main():
+    register()
+    bpy.ops.test.open_filebrowser('INVOKE_DEFAULT')
+    
 
 
 # Execute main()
