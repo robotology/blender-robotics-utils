@@ -44,7 +44,7 @@ def move(dummy):
     target_0 = math.degrees(bpy.data.objects["iCub"].pose.bones[iax.getAxisName(0)].rotation_euler[1])
     target_1 = math.degrees(bpy.data.objects["iCub"].pose.bones[iax.getAxisName(1)].rotation_euler[1])
     target_2 = math.degrees(bpy.data.objects["iCub"].pose.bones[iax.getAxisName(2)].rotation_euler[1])
-    
+
     # Read the current state of the robot
     ok_enc = ienc.getEncoders(encs.data())
     if not ok_enc:
@@ -88,10 +88,10 @@ if __name__ == "__main__":
     yarp.Network.init()
 
     unregister()
-    
+
     bpy.ops.object.mode_set(mode='POSE')
     bpy.context.scene.transform_orientation_slots[0].type = 'LOCAL'
-    
+
     if not yarp.Network.checkNetwork():
         print ('YARP server is not running!')
         sys.exit()

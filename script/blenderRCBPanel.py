@@ -53,7 +53,7 @@ class MyProperties(PropertyGroup):
         min = 10,
         max = 100
         )
-    
+
     my_float: FloatProperty(
         name = "Threshold(degrees)",
         description = "Threshold for the safety checks",
@@ -65,10 +65,10 @@ class MyProperties(PropertyGroup):
     my_float_vector: FloatVectorProperty(
         name = "Float Vector Value",
         description="Something",
-        default=(0.0, 0.0, 0.0), 
+        default=(0.0, 0.0, 0.0),
         min= 0.0, # float
         max = 0.1
-    ) 
+    )
 
     my_string: StringProperty(
         name="Robot",
@@ -84,7 +84,7 @@ class MyProperties(PropertyGroup):
         maxlen=1024,
         subtype='DIR_PATH'
         )
-        
+
     my_enum: EnumProperty(
         name="Dropdown:",
         description="Parts:",
@@ -138,7 +138,7 @@ def move(dummy):
     for joint in range(0, ipos.getAxes()):
         # TODO handle the name of the armature, just keep iCub for now
         target = math.degrees(bpy.data.objects["iCub"].pose.bones[iax.getAxisName(joint)].rotation_euler[1])
-        
+
     if abs(encs[joint] - target) > threshold:
         print("The target is too far, reaching in position control")
         # Pause the animation
@@ -200,12 +200,12 @@ class WM_OT_Connect(Operator):
         return {'CANCELLED'}
 
         encs = yarp.Vector(ipos.getAxes())
-        for joint in range(0, ipos.getAxes()): 
+        for joint in range(0, ipos.getAxes()):
             icm.setControlMode(joint, yarp.VOCAB_CM_POSITION_DIRECT)
 
         register_rcb(driver, icm, iposDir, ipos, ienc, encs, iax)
-        
-        # TODO check if we need this 
+
+        # TODO check if we need this
         #bpy.app.handlers.frame_change_post.clear()
         bpy.app.handlers.frame_change_post.append(move)
 
@@ -218,10 +218,10 @@ class WM_OT_Connect(Operator):
 class OBJECT_PT_robot_controller(Panel):
     bl_label = "Robot controller"
     bl_idname = "OBJECT_PT_robot_controller"
-    bl_space_type = "VIEW_3D"   
+    bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "Tools"
-    bl_context = "objectmode"   
+    bl_context = "objectmode"
 
 
     @classmethod
@@ -235,7 +235,7 @@ class OBJECT_PT_robot_controller(Panel):
 
         #layout.prop(mytool, "my_bool")
         layout.prop(mytool, "my_float")
-        layout.prop(mytool, "my_enum", text="") 
+        layout.prop(mytool, "my_enum", text="")
         layout.prop(mytool, "my_string")
         layout.operator("wm.connect")
         layout.separator()

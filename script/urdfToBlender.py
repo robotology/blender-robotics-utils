@@ -16,8 +16,8 @@ def rigify(path):
     mdlLoader = iDynTree.ModelLoader();
     mdlExporter = iDynTree.ModelExporter();
     mdlLoader.loadModelFromFile(path);
-        
-    # Produce the reduced urdf    
+
+    # Produce the reduced urdf
     model = mdlLoader.model()
     traversal = iDynTree.Traversal()
     ok_traversal = model.computeFullTreeTraversal(traversal)
@@ -44,11 +44,11 @@ def rigify(path):
     gravity.zero();
     gravity.setVal(2, -9.81);
     dynComp.setRobotState(s,ds,gravity);
-    
+
     dynComp.loadRobotModel(mdlLoader.model());
     print("The loaded model has", dynComp.model().getNrOfDOFs(), \
     "internal degrees of freedom and",dynComp.model().getNrOfLinks(),"links.")
-    
+
     # Remove meshes leftovers
     # Will collect meshes from delete objects
     meshes = set()
@@ -62,7 +62,7 @@ def rigify(path):
     for mesh in [m for m in meshes if m.users == 0]:
         # Delete the meshes
         bpy.data.meshes.remove( mesh )
-    
+
     # Check if there are still orphean meshes
     # It may happens when you delete the object from UI
     for mesh in bpy.data.meshes:
@@ -87,7 +87,7 @@ def rigify(path):
     bpy.ops.object.mode_set(mode='EDIT')
     edit_bones = armature_data.data.edit_bones
     pose_bones = armature_data.pose.bones
-    
+
     limits = {}
     bone_list = {}
     # Loop for defining the hierarchy of the bonse and its locations
@@ -102,7 +102,7 @@ def rigify(path):
         jointtype = ""
         if joint.isRevoluteJoint():
             joint = joint.asRevoluteJoint()
-            jointtype = "REVOLUTE" 
+            jointtype = "REVOLUTE"
             direction =	joint.getAxis(childIdx,parentIdx).getDirection().toNumPy()
         # This is missing from idyntree api :(
         #elif joint.isPrismaticJoint():
@@ -113,10 +113,10 @@ def rigify(path):
             jointtype = "FIXED"
         #else:
         #    joint = joint.asRevoluteJoint()
-        #    jointtype = "REVOLUTE" 
+        #    jointtype = "REVOLUTE"
         #    direction =	joint.getAxis(childIdx,parentIdx).getDirection().toNumPy()
         min = joint.getMinPosLimit(0)
-        max = joint.getMaxPosLimit(0)    
+        max = joint.getMaxPosLimit(0)
         bparent = None
         if parentname in bone_list.keys():
             bparent = bone_list[parentname]
@@ -138,22 +138,22 @@ def rigify(path):
             bparent.head = (0,0,0)
             bparent.tail = (0,0,-0.01)
             bone_list[parentname] = bparent
-        
+
         bonename = model.getJointName(idyn_joint_idx)
         if bonename not in edit_bones.keys():
             bchild = edit_bones.new(bonename)
         else:
             bchild = edit_bones[bonename]
-        
+
         if bparent:
             bchild.parent = bparent
-        
+
         parent_link_transform = dynComp.getRelativeTransform("root_link", parentname)
         parent_link_position  = parent_link_transform.getPosition().toNumPy();
         child_link_transform  = dynComp.getRelativeTransform("root_link", childname)
         child_link_position   = child_link_transform.getPosition().toNumPy();
         child_link_rotation   = mathutils.Matrix(child_link_transform.getRotation().toNumPy());
-        
+
         # Start defining the bone like parent->child link
         bchild.head = parent_link_position
         bchild.tail = child_link_position
@@ -166,13 +166,13 @@ def rigify(path):
             # In our representation the revolute joint is a bone placed in the child origin
             # oriented towards the axis of the joint.
             bchild.head = child_link_position
-            bchild.tail = bchild.head + direction * length 
-        
+            bchild.tail = bchild.head + direction * length
+
         bone_list[childname] = bchild
         # Consider the y-axis orientation in the limits
         limits[model.getJointName(idyn_joint_idx)] = [min, max, jointtype]
 
-    # configure the bones limits    
+    # configure the bones limits
     bpy.ops.object.mode_set(mode='POSE')
     for pbone in pose_bones:
         bone_name = pbone.basename
@@ -186,10 +186,10 @@ def rigify(path):
         # check the nr of DOFs
         if lim[2] == "FIXED" :
             continue
-        
+
         c = pbone.constraints.new('LIMIT_ROTATION')
         c.owner_space = 'LOCAL'
-        
+
         if lim[2] == "REVOLUTE":
             # The bones should rotate around y-axis
             pbone.lock_rotation[1] = False
@@ -202,15 +202,15 @@ def rigify(path):
             #print(bone_name, math.degrees(lim[0]), math.degrees(lim[1]))
             c.min_y = lim[0] # min
             c.max_y = lim[1] # max
-        
+
         # TODO not sure if it is the right rotation_mode
-        pbone.rotation_mode = 'XYZ' 
-        
+        pbone.rotation_mode = 'XYZ'
+
     # exit edit mode to save bones so they can be used in pose mode
     bpy.ops.object.mode_set(mode='OBJECT')
     meshMap = {}
     meshesInfo = {}
-    
+
     # import meshes and do the mapping to the link
     for link_id in range(model.getNrOfLinks()):
         if len(linkVisual[link_id]) == 0:
@@ -237,7 +237,7 @@ def rigify(path):
                     meshName = mesh.name
                     break
         meshMap[linkname] = meshName
-    
+
     # just for checking that the map link->mesh is ok.
     #for k,v in meshMap.items():
     #    print(k,v)
@@ -253,7 +253,7 @@ def rigify(path):
         LinkToGtransform = meshesInfo[linkname].getLink_H_geometry()
         # root->geometry transform
         RToGtransform = RtoLinktransform * LinkToGtransform
-        
+
         meshobj.location = RToGtransform.getPosition().toNumPy()
         meshobj.rotation_mode = "QUATERNION"
         meshobj.rotation_quaternion = RToGtransform.getRotation().asQuaternion()
@@ -261,7 +261,7 @@ def rigify(path):
         #print(bone_list[linkname].name)
         #bpy.data.objects[meshname].parent_type = 'BONE'
        #bpy.data.objects[meshname].parent   = bpy.data.objects[linkname]
-    
+
     # Now iterate over all the joints(bones) and link them to the meshes.
     for idyn_joint_idx in range(model.getNrOfJoints()):
         # The joint should move the child link(?)
@@ -274,7 +274,7 @@ def rigify(path):
 
         bpy.ops.object.select_all(action='DESELECT')
         armature_data.select_set(True)
-        bpy.context.view_layer.objects.active = armature_data 
+        bpy.context.view_layer.objects.active = armature_data
 
         bpy.ops.object.mode_set(mode='EDIT')
 
@@ -287,7 +287,7 @@ def rigify(path):
         armature_data.select_set(True)
         bpy.context.view_layer.objects.active = armature_data     #the active object will be the parent of all selected object
 
-        bpy.ops.object.parent_set(type='BONE', keep_transform=True)       
+        bpy.ops.object.parent_set(type='BONE', keep_transform=True)
     # Set in pose mode and select local
     bpy.ops.object.mode_set(mode='POSE')
     bpy.context.scene.transform_orientation_slots[0].type = 'LOCAL'
@@ -297,7 +297,7 @@ class OT_TestOpenFilebrowser(Operator, ImportHelper):
 
     bl_idname = "test.open_filebrowser"
     bl_label = "Select the urdf"
-    
+
     filter_glob: StringProperty(
         default='*.urdf',
         options={'HIDDEN'}
@@ -307,12 +307,12 @@ class OT_TestOpenFilebrowser(Operator, ImportHelper):
         """Do something with the selected file(s)."""
 
         filename, extension = os.path.splitext(self.filepath)
-        
+
         print('Selected file:', self.filepath)
         print('File name:', filename)
         print('File extension:', extension)
         rigify(self.filepath)
-        
+
         return {'FINISHED'}
 
 
@@ -326,7 +326,7 @@ def unregister():
 def main():
     register()
     bpy.ops.test.open_filebrowser('INVOKE_DEFAULT')
-    
+
 
 
 # Execute main()
