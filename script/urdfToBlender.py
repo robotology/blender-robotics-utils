@@ -170,9 +170,7 @@ def rigify(path):
         
         bone_list[childname] = bchild
         # Consider the y-axis orientation in the limits
-        limit_y_lower = min if (direction[1] > 0) else -max
-        limit_y_upper = max if (direction[1] > 0) else -min
-        limits[model.getJointName(idyn_joint_idx)] = [limit_y_lower, limit_y_upper, jointtype]
+        limits[model.getJointName(idyn_joint_idx)] = [min, max, jointtype]
 
     # configure the bones limits    
     bpy.ops.object.mode_set(mode='POSE')
