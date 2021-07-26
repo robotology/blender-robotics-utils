@@ -4,6 +4,7 @@ import mathutils
 import math
 import os
 import idyntree.bindings as iDynTree
+import xml.etree.ElementTree as ET
 
 from bpy.props import StringProperty, BoolProperty
 from bpy_extras.io_utils import ImportHelper
@@ -11,6 +12,12 @@ from bpy.types import Operator
 
 
 def rigify(path):
+
+    armature_name = ""
+
+    # Get robot name needed until https://github.com/robotology/idyntree/issues/908 is not fixed
+    root = ET.parse(path).getroot()
+    armature_name = root.attrib["name"]
     # Get the urdf and parse it
     dynComp = iDynTree.KinDynComputations();
     mdlLoader = iDynTree.ModelLoader();
@@ -70,7 +77,6 @@ def rigify(path):
            bpy.data.meshes.remove( mesh )
     # Define the armature
     # Create armature and armature object
-    armature_name = "iCub"
     try:
         armature_object = bpy.data.objects[armature_name]
     except KeyError:
