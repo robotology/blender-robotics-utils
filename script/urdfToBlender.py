@@ -48,6 +48,26 @@ def rigify(path):
     dynComp.loadRobotModel(mdlLoader.model());
     print("The loaded model has", dynComp.model().getNrOfDOFs(), \
     "internal degrees of freedom and",dynComp.model().getNrOfLinks(),"links.")
+    
+    # Remove meshes leftovers
+    # Will collect meshes from delete objects
+    meshes = set()
+    # Get objects in the collection if they are meshes
+    for obj in [o for o in bpy.data.objects if o.type == 'MESH']:
+        # Store the internal mesh
+        meshes.add( obj.data )
+        # Delete the object
+        bpy.data.objects.remove( obj )
+    # Look at meshes that are orphean after objects removal
+    for mesh in [m for m in meshes if m.users == 0]:
+        # Delete the meshes
+        bpy.data.meshes.remove( mesh )
+    
+    # Check if there are still orphean meshes
+    # It may happens when you delete the object from UI
+    for mesh in bpy.data.meshes:
+       if mesh.name not in  bpy.data.objects.keys():
+           bpy.data.meshes.remove( mesh )
     # Define the armature
     # Create armature and armature object
     armature_name = "iCub"
@@ -192,27 +212,6 @@ def rigify(path):
     bpy.ops.object.mode_set(mode='OBJECT')
     meshMap = {}
     meshesInfo = {}
-    
-    # Remove meshes leftovers
-    # Will collect meshes from delete objects
-    meshes = set()
-    # Get objects in the collection if they are meshes
-    for obj in [o for o in bpy.data.objects if o.type == 'MESH']:
-        # Store the internal mesh
-        meshes.add( obj.data )
-        # Delete the object
-        bpy.data.objects.remove( obj )
-    # Look at meshes that are orphean after objects removal
-    for mesh in [m for m in meshes if m.users == 0]:
-        # Delete the meshes
-        bpy.data.meshes.remove( mesh )
-    
-    # Check if there are still orphean meshes
-    # It may happens when you delete the object from UI
-    for mesh in bpy.data.meshes:
-       if mesh.name not in  bpy.data.objects.keys():
-           bpy.data.meshes.remove( mesh )
-    
     
     # import meshes and do the mapping to the link
     for link_id in range(model.getNrOfLinks()):
