@@ -194,14 +194,10 @@ def rigify(path):
     meshesInfo = {}
     
     # Remove meshes leftovers
-    collection_name = "Collection"
-    # Get the collection from its name
-    collection = bpy.data.collections[collection_name]
-
     # Will collect meshes from delete objects
     meshes = set()
     # Get objects in the collection if they are meshes
-    for obj in [o for o in collection.objects if o.type == 'MESH']:
+    for obj in [o for o in bpy.data.objects if o.type == 'MESH']:
         # Store the internal mesh
         meshes.add( obj.data )
         # Delete the object
@@ -210,8 +206,15 @@ def rigify(path):
     for mesh in [m for m in meshes if m.users == 0]:
         # Delete the meshes
         bpy.data.meshes.remove( mesh )
-    # import meshes and do the mapping to the link
     
+    # Check if there are still orphean meshes
+    # It may happens when you delete the object from UI
+    for mesh in bpy.data.meshes:
+       if mesh.name not in  bpy.data.objects.keys():
+           bpy.data.meshes.remove( mesh )
+    
+    
+    # import meshes and do the mapping to the link
     for link_id in range(model.getNrOfLinks()):
         if len(linkVisual[link_id]) == 0:
             continue
