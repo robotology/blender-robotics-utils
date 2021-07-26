@@ -13,16 +13,16 @@ This repository is maintained by:
 Python script that given the urdf of a robot as input, define the complete rig, in terms of bones, meshes and joint limits.
 #### Dependencies
 - Blender > 2.79
-- iDynTree python bindings
-- `GAZEBO_MODEL_PATH` pointing to the folder containing the urdfs and meshes of the models to be converted.
-
+- [iDynTree](https://github.com/robotology/idyntree) python bindings
+- `GAZEBO_MODEL_PATH` [properly set](https://github.com/robotology/icub-models#use-the-models-with-gazebo).
 #### Usage
 Once installed correctly the dependencies run:
+
 (Windows Powershell)
 ```
  & "C:\Program Files\Blender Foundation\Blender <blender_version>\blender.exe" --python-use-system-env
 ```
-(Linux)
+(Linux & macOs)
 ```
 $ blender --python-use-system-env
 ```
@@ -35,8 +35,16 @@ It will open a dialog for selecting the urdf to be converted to rig.
 After selecting the urdf, the script creates the rig of the robot in term of armature and meshes.
 
 #### Examples
-**iCub 2.5**
-**iCub 3**
+
+|**iCub 2.5** | **iCub 3**|
+|:---:|:---:|
+| ![immagine](https://user-images.githubusercontent.com/19152494/126991916-39b97bd1-da3b-4114-8597-9d835ad835a1.png) | ![immagine](https://user-images.githubusercontent.com/19152494/126991957-feb4eb6b-5ae0-4d3b-bfef-4ec05a5eaf10.png) |
+
+
+
+
+
+
 
 #### Known limitations
 - Only fixed or revolute joints are handled(see ).
@@ -45,7 +53,9 @@ After selecting the urdf, the script creates the rig of the robot in term of arm
 ### blenderController 🚧
 Simple demo script that opens a [YARP `remote_controlboard`] for controlling the iCub head, and attach to the animations frames a callback for moving the joints accordingly to the movements of the rig.
 Since it is script that has been created with the purpose to show the potentialities of Blender in robotics, this will be not improved/extended or maintained.
-Here is a gif showing this simple controller on iCub.
+Here is a video showing this simple controller on iCub.
+
+https://user-images.githubusercontent.com/19152494/125633637-26f74b75-390b-409e-bde1-d1e326f50c23.mp4
 
 ### blenderRCBPanel 🚧
 WORK IN PROGRESS
