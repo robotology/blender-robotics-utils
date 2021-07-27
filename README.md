@@ -15,6 +15,18 @@ Python script that given the urdf of a robot as input, define the complete rig, 
 - Blender > 2.79
 - [iDynTree](https://github.com/robotology/idyntree) python bindings
 - `GAZEBO_MODEL_PATH` [properly set](https://github.com/robotology/icub-models#use-the-models-with-gazebo).
+
+An easy way to install the dependencies is to use the [conda](https://docs.conda.io/en/latest/) binaries packages.
+Just [install conda](https://github.com/robotology/robotology-superbuild/blob/master/doc/install-miniforge.md) and then:
+
+```
+conda create -n blenderenv
+conda activate blenderenv
+conda install -c conda-forge -c robotology python=<blender_py_ver> yarp idyntree
+conda env config vars set PYTHONPATH=/where/the/bindings/are/installed
+```
+where `<blender_py_ver>` is the python version used inside Blender.
+
 #### Usage
 Once installed correctly the dependencies run:
 
@@ -45,8 +57,8 @@ After selecting the urdf, the script creates the rig of the robot in term of arm
 - Only fixed or revolute joints are handled(see https://github.com/robotology/idyntree/issues/881, it requires iDynTree >= 3.3.0).
 - Only `.stl` and `.ply` format are supported for meshes.
 
-### blenderController 🚧
-Simple demo script that opens a [YARP `remote_controlboard`] for controlling the iCub head, and attach to the animations frames a callback for moving the joints accordingly to the movements of the rig.
+### iCubNeckBlenderController 🚧
+Simple demo script that opens a [YARP `remote_controlboard`](http://yarp.it/latest/classRemoteControlBoard.html#details) for controlling the iCub head, and attach to the animations frames a callback for moving the joints accordingly to the movements of the rig.
 Since it is script that has been created with the purpose to show the potentialities of Blender in robotics, this will be not improved/extended or maintained.
 Here is a video showing this simple controller on iCub.
 
