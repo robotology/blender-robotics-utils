@@ -8,10 +8,9 @@ This repository is maintained by:
 |:---:|:---:|
 | [<img src="https://github.com/Nicogene.png" width="40">](https://github.com/niNicogenecogene) | [@Nicogene](https://github.com/Nicogene) |
 
-## Blender
-### urdfToBlender
+## urdfToBlender
 Python script that given the urdf of a robot as input, define the complete rig, in terms of bones, meshes and joint limits.
-#### Dependencies
+### Dependencies
 - Blender > 2.79
 - [iDynTree](https://github.com/robotology/idyntree) python bindings
 - `GAZEBO_MODEL_PATH` [properly set](https://github.com/robotology/icub-models#use-the-models-with-gazebo).
@@ -27,7 +26,7 @@ conda env config vars set PYTHONPATH=/where/the/bindings/are/installed
 ```
 where `<blender_py_ver>` is the python version used inside Blender.
 
-#### Usage
+### Usage
 Once installed correctly the dependencies run:
 
 (Windows Powershell)
@@ -46,24 +45,24 @@ It will open a dialog for selecting the urdf to be converted to rig.
 
 After selecting the urdf, the script creates the rig of the robot in term of armature and meshes.
 
-#### Examples
+### Examples
 
 |**iCub 2.5** | **iCub 3**|
 |:---:|:---:|
 | ![immagine](https://user-images.githubusercontent.com/19152494/126991916-39b97bd1-da3b-4114-8597-9d835ad835a1.png) | ![immagine](https://user-images.githubusercontent.com/19152494/126991957-feb4eb6b-5ae0-4d3b-bfef-4ec05a5eaf10.png) |
 
 
-#### Known limitations
+### Known limitations
 - Only fixed or revolute joints are handled(see https://github.com/robotology/idyntree/issues/881, it requires iDynTree >= 3.3.0).
 - Only `.stl` and `.ply` format are supported for meshes.
 
-### iCubNeckBlenderController 🚧
+## iCubNeckBlenderController 🚧
 Simple demo script that opens a [YARP `remote_controlboard`](http://yarp.it/latest/classRemoteControlBoard.html#details) for controlling the iCub head, and attach to the animations frames a callback for moving the joints accordingly to the movements of the rig.
 Since it is script that has been created with the purpose to show the potentialities of Blender in robotics, this will be not improved/extended or maintained.
 Here is a video showing this simple controller on iCub.
 
 https://user-images.githubusercontent.com/19152494/125633637-26f74b75-390b-409e-bde1-d1e326f50c23.mp4
 
-### blenderRCBPanel 🚧
+## blenderRCBPanel 🚧
 WORK IN PROGRESS
 
