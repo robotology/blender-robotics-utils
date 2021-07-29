@@ -7,4 +7,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - Added `urdfToBlender` python script that creates a rig starting from a urdf of a robot.
 - Added `icub2_5.blend` and `icub3.blend`,
-- Renamed the script for rigging in Cinema4D in `sdfToC4D`.
