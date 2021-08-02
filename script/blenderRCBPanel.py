@@ -38,71 +38,74 @@ from bpy.types import (Panel,
                        Operator,
                        PropertyGroup,
                        )
+# ------------------------------------------------------------------------
+#    Structures
+# ------------------------------------------------------------------------
 
+class rcb_wrapper():
+    def __init__(self, driver, icm, iposDir, ipos, ienc, encs, iax):
+        self.driver = driver
+        self.icm = icm
+        self.iposDir = iposDir
+        self.ipos = ipos
+        self.ienc = ienc
+        self.encs = encs
+        self.iax = iax
 
 
 # ------------------------------------------------------------------------
 #    Operators
 # ------------------------------------------------------------------------
-def register_rcb(driver, icm, iposDir, ipos, ienc, encs, iax):
+def register_rcb(rcb_instance, rcb_name):
     scene = bpy.types.Scene
-    scene.driver = driver
-    scene.icm = icm
-    scene.iposDir = iposDir
-    scene.ipos = ipos
-    scene.ienc = ienc
-    scene.encs = encs
-    scene.iax = iax
+    scene.rcb_wrapper[rcb_name] = rcb_instance
 
-def unregister_rcb():
+
+def unregister_rcb(rcb_name):
     try:
-        del bpy.types.Scene.driver
-        del bpy.types.Scene.icm
-        del bpy.types.Scene.iposDir
-        del bpy.types.Scene.ipos
-        del bpy.types.Scene.ienc
-        del bpy.types.Scene.encs
-        del bpy.types.Scene.iax
+        del bpy.types.Scene.rcb_wrapper[rcb_name]
     except:
         pass
 
 def move(dummy):
     threshold = 5.0 # degrees
-    # Get the handles
-    scene = bpy.types.Scene
-    icm     = scene.icm
-    iposDir = scene.iposDir
-    ipos    = scene.ipos
-    ienc    = scene.ienc
-    encs    = scene.encs
-    iax     = scene.iax
-    # Get the targets from the rig
-    ok_enc = ienc.getEncoders(encs.data())
-    if not ok_enc:
-        print("I cannot read the encoders, skipping")
-        return
-    for joint in range(0, ipos.getAxes()):
-        # TODO handle the name of the armature, just keep iCub for now
-        target = math.degrees(bpy.data.objects["iCub"].pose.bones[iax.getAxisName(joint)].rotation_euler[1])
-    
-        if abs(encs[joint] - target) > threshold:
-            print("The target is too far, reaching in position control")
-            # Pause the animation
-            bpy.ops.screen.animation_play() # We have to check if it is ok
-            # Switch to position control and move to the target
-            # TODO try to find a way to use the s methods
-            icm.setControlMode(joint, yarp.VOCAB_CM_POSITION)
-            ipos.setRefSpeed(joint,10)
-            ipos.positionMove(joint,target)
-            done = ipos.isMotionDone(joint)
-            while not done:
+    scene   = bpy.types.Scene
+    for key in scene.rcb_wrapper:
+        rcb_instance = scene.rcb_wrapper[key]
+        # Get the handles
+        icm     = rcb_instance.icm
+        iposDir = rcb_instance.iposDir
+        ipos    = rcb_instance.ipos
+        ienc    = rcb_instance.ienc
+        encs    = rcb_instance.encs
+        iax     = rcb_instance.iax
+        # Get the targets from the rig
+        ok_enc = ienc.getEncoders(encs.data())
+        if not ok_enc:
+            print("I cannot read the encoders, skipping")
+            return
+        for joint in range(0, ipos.getAxes()):
+            # TODO handle the name of the armature, just keep iCub for now
+            target = math.degrees(bpy.data.objects["iCub"].pose.bones[iax.getAxisName(joint)].rotation_euler[1])
+        
+            if abs(encs[joint] - target) > threshold:
+                print("The target is too far, reaching in position control")
+                # Pause the animation
+                bpy.ops.screen.animation_play() # We have to check if it is ok
+                # Switch to position control and move to the target
+                # TODO try to find a way to use the s methods
+                icm.setControlMode(joint, yarp.VOCAB_CM_POSITION)
+                ipos.setRefSpeed(joint,10)
+                ipos.positionMove(joint,target)
                 done = ipos.isMotionDone(joint)
-                yarp.delay(0.001);
-            # Once finished put the joints in position direct and replay the animation back
-            icm.setControlMode(joint, yarp.VOCAB_CM_POSITION_DIRECT)
-            bpy.ops.screen.animation_play()
-        else:
-            iposDir.setPosition(joint,target)
+                while not done:
+                    done = ipos.isMotionDone(joint)
+                    yarp.delay(0.001);
+                # Once finished put the joints in position direct and replay the animation back
+                icm.setControlMode(joint, yarp.VOCAB_CM_POSITION_DIRECT)
+                bpy.ops.screen.animation_play()
+            else:
+                iposDir.setPosition(joint,target)
 
 
 # ------------------------------------------------------------------------
@@ -216,11 +219,12 @@ class WM_OT_Connect(bpy.types.Operator):
         for joint in range(0, ipos.getAxes()):
             icm.setControlMode(joint, yarp.VOCAB_CM_POSITION_DIRECT)
 
-        register_rcb(driver, icm, iposDir, ipos, ienc, encs, iax)
+        
+        register_rcb(rcb_wrapper(driver, icm, iposDir, ipos, ienc, encs, iax), mytool.my_enum)
 
         # TODO check if we need this
         #bpy.app.handlers.frame_change_post.clear()
-        bpy.app.handlers.frame_change_post.append(move)
+        #bpy.app.handlers.frame_change_post.append(move)
 
         return {'FINISHED'}
 
@@ -269,11 +273,20 @@ def register():
 
     bpy.types.Scene.my_tool = PointerProperty(type=MyProperties)
 
+    # initialize the dict
+    bpy.types.Scene.rcb_wrapper = {}
+
+    # init the callback
+    bpy.app.handlers.frame_change_post.append(move)
+
 def unregister():
     from bpy.utils import unregister_class
     for cls in reversed(classes):
         unregister_class(cls)
     del bpy.types.Scene.my_tool
+
+    # remove the callback
+    bpy.app.handlers.frame_change_post.clear()
 
 
 if __name__ == "__main__":
