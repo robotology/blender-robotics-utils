@@ -171,6 +171,18 @@ class MyProperties(PropertyGroup):
                ]
         )
 
+class WM_OT_Disconnect(bpy.types.Operator):
+    bl_label = "Disconnect"
+    bl_idname = "wm.disconnect"
+
+    def execute(self, context):
+        scene = bpy.context.scene
+        mytool = scene.my_tool
+
+        rcb_instance = bpy.types.Scene.rcb_wrapper[mytool.my_enum]
+        rcb_instance.driver.close()
+
+        rcb_instance.pop(mytool.my_enum)
 
 class WM_OT_Connect(bpy.types.Operator):
     bl_label = "Connect"
@@ -184,21 +196,18 @@ class WM_OT_Connect(bpy.types.Operator):
             print ('YARP server is not running!')
             return {'CANCELLED'}
 
-        if hasattr(bpy.types.Scene, "driver"):
-            driver = bpy.types.Scene.driver
-        else:
-            options = yarp.Property()
-            driver = yarp.PolyDriver()
+        options = yarp.Property()
+        driver = yarp.PolyDriver()
 
-            # set the poly driver options
-            options.put("robot", mytool.my_string)
-            options.put("device", "remote_controlboard")
-            options.put("local", "/blender_controller/client/"+mytool.my_enum)
-            options.put("remote", "/"+mytool.my_string+"/"+mytool.my_enum)
+        # set the poly driver options
+        options.put("robot", mytool.my_string)
+        options.put("device", "remote_controlboard")
+        options.put("local", "/blender_controller/client/"+mytool.my_enum)
+        options.put("remote", "/"+mytool.my_string+"/"+mytool.my_enum)
 
-            # opening the drivers
-            print ('Opening the motor driver...')
-            driver.open(options)
+        # opening the drivers
+        print ('Opening the motor driver...')
+        driver.open(options)
 
         if not driver.isValid():
             print ('Cannot open the driver!')
@@ -255,6 +264,8 @@ class OBJECT_PT_robot_controller(Panel):
         layout.prop(mytool, "my_string")
         layout.operator("wm.connect")
         layout.separator()
+        layout.operator("wm.disconnect")
+        layout.separator()
 
 # ------------------------------------------------------------------------
 #    Registration
@@ -262,6 +273,7 @@ class OBJECT_PT_robot_controller(Panel):
 
 classes = (
     MyProperties,
+    WM_OT_Disconnect,
     WM_OT_Connect,
     OBJECT_PT_robot_controller
 )
