@@ -262,6 +262,8 @@ class OBJECT_PT_robot_controller(Panel):
     bl_region_type = "UI"
     bl_category = "Tools"
     bl_context = "posemode"
+    row_connect = None
+    row_disconnect = None
 
 
     @classmethod
@@ -272,16 +274,31 @@ class OBJECT_PT_robot_controller(Panel):
         layout = self.layout
         scene = context.scene
         mytool = scene.my_tool
+        part_name = mytool.my_enum
+        rcb_wrapper = bpy.types.Scene.rcb_wrapper
 
         #layout.prop(mytool, "my_bool")
         layout.prop(mytool, "my_enum", text="")
         layout.prop(mytool, "my_armature") 
         layout.prop(mytool, "my_string")
-        layout.operator("wm.connect")
+        row_connect = layout.row(align=True)
+        row_connect.operator("wm.connect")
         layout.separator()
-        layout.operator("wm.disconnect")
+        row_disconnect = layout.row(align=True)
+        row_disconnect.operator("wm.disconnect")
         layout.separator()
-
+        
+        if bpy.context.screen.is_animation_playing:
+            row_disconnect.enabled = False
+            row_connect.enabled = False
+        else:
+            if part_name  in rcb_wrapper.keys():
+                row_disconnect.enabled = True
+                row_connect.enabled = False
+            else:
+                row_disconnect.enabled = False
+                row_connect.enabled = True
+        
 # ------------------------------------------------------------------------
 #    Registration
 # ------------------------------------------------------------------------
