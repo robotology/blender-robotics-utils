@@ -70,6 +70,7 @@ def unregister_rcb(rcb_name):
 def move(dummy):
     threshold = 5.0 # degrees
     scene   = bpy.types.Scene
+    mytool = bpy.context.scene.my_tool
     for key in scene.rcb_wrapper:
         rcb_instance = scene.rcb_wrapper[key]
         # Get the handles
@@ -86,7 +87,7 @@ def move(dummy):
             return
         for joint in range(0, ipos.getAxes()):
             # TODO handle the name of the armature, just keep iCub for now
-            target = math.degrees(bpy.data.objects["iCub"].pose.bones[iax.getAxisName(joint)].rotation_euler[1])
+            target = math.degrees(bpy.data.objects[mytool.my_armature].pose.bones[iax.getAxisName(joint)].rotation_euler[1])
         
             if abs(encs[joint] - target) > threshold:
                 print("The target is too far, reaching in position control")
@@ -150,6 +151,13 @@ class MyProperties(PropertyGroup):
         default="icub",
         maxlen=1024,
         )
+        
+    my_armature: StringProperty(
+        name="Armature name",
+        description=":",
+        default="iCub",
+        maxlen=1024,
+        )
 
     my_path: StringProperty(
         name = "Directory",
@@ -180,9 +188,15 @@ class WM_OT_Disconnect(bpy.types.Operator):
         mytool = scene.my_tool
 
         rcb_instance = bpy.types.Scene.rcb_wrapper[mytool.my_enum]
+        
+        if rcb_instance is None:
+            return {'CANCELLED'}
         rcb_instance.driver.close()
 
-        rcb_instance.pop(mytool.my_enum)
+        del bpy.types.Scene.rcb_wrapper[mytool.my_enum]
+        
+        
+        return {'FINISHED'}
 
 class WM_OT_Connect(bpy.types.Operator):
     bl_label = "Connect"
@@ -261,6 +275,7 @@ class OBJECT_PT_robot_controller(Panel):
 
         #layout.prop(mytool, "my_bool")
         layout.prop(mytool, "my_enum", text="")
+        layout.prop(mytool, "my_armature") 
         layout.prop(mytool, "my_string")
         layout.operator("wm.connect")
         layout.separator()
