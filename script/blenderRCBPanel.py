@@ -68,7 +68,7 @@ def unregister_rcb(rcb_name):
         pass
 
 def move(dummy):
-    threshold = 5.0 # degrees
+    threshold = 10.0 # degrees
     scene   = bpy.types.Scene
     mytool = bpy.context.scene.my_tool
     for key in scene.rcb_wrapper:
@@ -87,10 +87,15 @@ def move(dummy):
             return
         for joint in range(0, ipos.getAxes()):
             # TODO handle the name of the armature, just keep iCub for now
-            target = math.degrees(bpy.data.objects[mytool.my_armature].pose.bones[iax.getAxisName(joint)].rotation_euler[1])
+            joint_name = iax.getAxisName(joint)
+            if joint_name not in bpy.data.objects[mytool.my_armature].pose.bones.keys():
+                continue
+            
+            target = math.degrees(bpy.data.objects[mytool.my_armature].pose.bones[joint_name].rotation_euler[1])
         
             if abs(encs[joint] - target) > threshold:
-                print("The target is too far, reaching in position control")
+                print("The target is too far, reaching in position control, for joint", joint_name, "by ", abs(encs[joint] - target), " degrees" )
+                
                 # Pause the animation
                 bpy.ops.screen.animation_play() # We have to check if it is ok
                 # Switch to position control and move to the target
