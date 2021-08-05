@@ -1,6 +1,8 @@
 # Blender Robotics Utils
 This repository contains utilities for exporting/controlling your robot in [Blender](https://www.blender.org/)
 
+![ezgif com-gif-maker](https://user-images.githubusercontent.com/19152494/128324719-b9bda13d-92dd-49f5-b866-8dd04b3f9d76.gif)
+
 ## Maintainers
 This repository is maintained by:
 
