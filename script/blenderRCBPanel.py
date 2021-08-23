@@ -43,7 +43,7 @@ from bpy.types import (Panel,
 # ------------------------------------------------------------------------
 
 class rcb_wrapper():
-    def __init__(self, driver, icm, iposDir, ipos, ienc, encs, iax):
+    def __init__(self, driver, icm, iposDir, ipos, ienc, encs, iax, joint_limits):
         self.driver = driver
         self.icm = icm
         self.iposDir = iposDir
@@ -51,6 +51,7 @@ class rcb_wrapper():
         self.ienc = ienc
         self.encs = encs
         self.iax = iax
+        self.joint_limits = joint_limits
 
 
 # ------------------------------------------------------------------------
@@ -90,12 +91,17 @@ def move(dummy):
             joint_name = iax.getAxisName(joint)
             if joint_name not in bpy.data.objects[mytool.my_armature].pose.bones.keys():
                 continue
-            
+
             target = math.degrees(bpy.data.objects[mytool.my_armature].pose.bones[joint_name].rotation_euler[1])
-        
+            min    = joint_limits[joint][0]
+            max    = joint_limits[joint][1]
+            if target < min or target > max:
+                print("The target", target, "it is outside the boundaries (", min, ",", max, "), skipping.")
+                continue
+
             if abs(encs[joint] - target) > threshold:
                 print("The target is too far, reaching in position control, for joint", joint_name, "by ", abs(encs[joint] - target), " degrees" )
-                
+
                 # Pause the animation
                 bpy.ops.screen.animation_play() # We have to check if it is ok
                 # Switch to position control and move to the target
@@ -156,7 +162,7 @@ class MyProperties(PropertyGroup):
         default="icub",
         maxlen=1024,
         )
-        
+
     my_armature: StringProperty(
         name="Armature name",
         description=":",
@@ -193,14 +199,14 @@ class WM_OT_Disconnect(bpy.types.Operator):
         mytool = scene.my_tool
 
         rcb_instance = bpy.types.Scene.rcb_wrapper[mytool.my_enum]
-        
+
         if rcb_instance is None:
             return {'CANCELLED'}
         rcb_instance.driver.close()
 
         del bpy.types.Scene.rcb_wrapper[mytool.my_enum]
-        
-        
+
+
         return {'FINISHED'}
 
 class WM_OT_Connect(bpy.types.Operator):
@@ -239,16 +245,24 @@ class WM_OT_Connect(bpy.types.Operator):
         ipos = driver.viewIPositionControl()
         ienc = driver.viewIEncoders()
         iax = driver.viewIAxisInfo()
-        if ienc is None or ipos is None or icm is None or iposDir is None or iax is None:
+        ilim = driver.viewIControlLimits()
+        if ienc is None or ipos is None or icm is None or iposDir is None or iax is None or ilim is None:
             print ('Cannot view one of the interfaces!')
             return {'CANCELLED'}
 
         encs = yarp.Vector(ipos.getAxes())
-        for joint in range(0, ipos.getAxes()):
-            icm.setControlMode(joint, yarp.VOCAB_CM_POSITION_DIRECT)
+        joint_limits = []
 
-        
-        register_rcb(rcb_wrapper(driver, icm, iposDir, ipos, ienc, encs, iax), mytool.my_enum)
+        for joint in range(0, ipos.getAxes()):
+            min = []
+            max = []
+            icm.setControlMode(joint, yarp.VOCAB_CM_POSITION_DIRECT)
+            ilim.getLimits(joint, min, max)
+            joint_limits[joint] = (min, max)
+
+
+
+        register_rcb(rcb_wrapper(driver, icm, iposDir, ipos, ienc, encs, iax, joint_limits), mytool.my_enum)
 
         # TODO check if we need this
         #bpy.app.handlers.frame_change_post.clear()
@@ -284,7 +298,7 @@ class OBJECT_PT_robot_controller(Panel):
 
         #layout.prop(mytool, "my_bool")
         layout.prop(mytool, "my_enum", text="")
-        layout.prop(mytool, "my_armature") 
+        layout.prop(mytool, "my_armature")
         layout.prop(mytool, "my_string")
         row_connect = layout.row(align=True)
         row_connect.operator("wm.connect")
@@ -292,7 +306,7 @@ class OBJECT_PT_robot_controller(Panel):
         row_disconnect = layout.row(align=True)
         row_disconnect.operator("wm.disconnect")
         layout.separator()
-        
+
         if bpy.context.screen.is_animation_playing:
             row_disconnect.enabled = False
             row_connect.enabled = False
@@ -303,7 +317,7 @@ class OBJECT_PT_robot_controller(Panel):
             else:
                 row_disconnect.enabled = False
                 row_connect.enabled = True
-        
+
 # ------------------------------------------------------------------------
 #    Registration
 # ------------------------------------------------------------------------
