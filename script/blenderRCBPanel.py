@@ -81,6 +81,7 @@ def move(dummy):
         ienc    = rcb_instance.ienc
         encs    = rcb_instance.encs
         iax     = rcb_instance.iax
+        joint_limits     = rcb_instance.joint_limits
         # Get the targets from the rig
         ok_enc = ienc.getEncoders(encs.data())
         if not ok_enc:
@@ -254,11 +255,11 @@ class WM_OT_Connect(bpy.types.Operator):
         joint_limits = []
 
         for joint in range(0, ipos.getAxes()):
-            min = []
-            max = []
+            min = yarp.Vector(1)
+            max = yarp.Vector(1)
             icm.setControlMode(joint, yarp.VOCAB_CM_POSITION_DIRECT)
-            ilim.getLimits(joint, min, max)
-            joint_limits[joint] = (min, max)
+            ilim.getLimits(joint, min.data(), max.data())
+            joint_limits.append([min.get(0), max.get(0)])
 
 
 
