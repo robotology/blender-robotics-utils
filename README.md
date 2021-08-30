@@ -51,12 +51,12 @@ After selecting the urdf, the script creates the rig of the robot in term of arm
 
 |**iCub 2.5** | **iCub 3**|
 |:---:|:---:|
-| ![immagine](https://user-images.githubusercontent.com/19152494/126991916-39b97bd1-da3b-4114-8597-9d835ad835a1.png) | ![immagine](https://user-images.githubusercontent.com/19152494/126991957-feb4eb6b-5ae0-4d3b-bfef-4ec05a5eaf10.png) |
+| ![immagine](https://user-images.githubusercontent.com/19152494/126991916-39b97bd1-da3b-4114-8597-9d835ad835a1.png) | ![immagine](https://user-images.githubusercontent.com/19152494/131349166-bb03316e-a40e-4147-9c36-dbc5bcb48e41.png) |
 
 
 ### Known limitations
 - Only fixed or revolute joints are handled(see https://github.com/robotology/idyntree/issues/881, it requires iDynTree >= 3.3.0).
-- Only `.stl` and `.ply` format are supported for meshes.
+- Only `.stl`, `.ply` and `.dae` format are supported for meshes.
 
 ## iCubNeckBlenderController 🚧
 Simple demo script that opens a [YARP `remote_controlboard`](http://yarp.it/latest/classRemoteControlBoard.html#details) for controlling the iCub head, and attach to the animations frames a callback for moving the joints accordingly to the movements of the rig.
