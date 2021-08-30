@@ -65,10 +65,12 @@ def rigify(path):
     # Remove meshes leftovers
     # Will collect meshes from delete objects
     meshes = set()
+    # Delete all the objects in the scene
     # Get objects in the collection if they are meshes
-    for obj in [o for o in bpy.data.objects if o.type == 'MESH']:
+    for obj in bpy.data.objects:
         # Store the internal mesh
-        meshes.add( obj.data )
+        if obj.type == 'MESH':
+            meshes.add( obj.data )
         # Delete the object
         bpy.data.objects.remove( obj )
     # Look at meshes that are orphean after objects removal
@@ -81,6 +83,60 @@ def rigify(path):
     for mesh in bpy.data.meshes:
        if mesh.name not in  bpy.data.objects.keys():
            bpy.data.meshes.remove( mesh )
+
+    # Import the meshes
+    meshMap = {}
+    meshesInfo = {}
+
+    # import meshes and do the mapping to the link
+    for link_id in range(model.getNrOfLinks()):
+        if len(linkVisual[link_id]) == 0:
+            continue
+        if not linkVisual[link_id][0].isExternalMesh():
+            continue
+        meshesInfo[model.getLinkName(link_id)] = linkVisual[link_id][0].asExternalMesh()
+        filePath = meshesInfo[model.getLinkName(link_id)].getFileLocationOnLocalFileSystem()
+        linkname = model.getLinkName(link_id)
+        # import the mesh
+        if ".stl" in filePath:
+            bpy.ops.import_mesh.stl(filepath=os.path.join(filePath),global_scale=0.001)
+        elif ".ply" in filePath:
+            bpy.ops.import_mesh.ply(filepath=os.path.join(filePath),global_scale=0.001)
+        elif ".dae" in filePath:
+            bpy.ops.wm.collada_import(filepath=os.path.join(filePath), import_units=True) #TODO check how to handle scale here !
+        meshName = ""
+        # We are assuming we are starting in a clean environment
+        if not meshMap.keys() :
+            meshName = bpy.data.objects.keys()[0]
+        else:
+            for mesh in bpy.data.objects:
+                if mesh.name not in meshMap.values():
+                    meshName = mesh.name
+                    break
+        # DEBUG, TO BE REMOVED.
+        if ".dae" in filePath:
+            print(linkname,meshName)
+
+        meshMap[linkname] = meshName
+
+    # Place the meshes
+    for link_id in range(model.getNrOfLinks()):
+        linkname = model.getLinkName(link_id)
+        if linkname not in meshMap.keys():
+            continue
+        meshname = meshMap[linkname]
+        meshobj = bpy.data.objects[meshname]
+        # root->link transform
+        RtoLinktransform = dynComp.getRelativeTransform("root_link", linkname)
+        # link->geometry transform
+        LinkToGtransform = meshesInfo[linkname].getLink_H_geometry()
+        # root->geometry transform
+        RToGtransform = RtoLinktransform * LinkToGtransform
+
+        meshobj.location = RToGtransform.getPosition().toNumPy()
+        meshobj.rotation_mode = "QUATERNION"
+        meshobj.rotation_quaternion = RToGtransform.getRotation().asQuaternion()
+
     # Define the armature
     # Create armature and armature object
     try:
@@ -165,7 +221,6 @@ def rigify(path):
         child_link_transform  = dynComp.getRelativeTransform("root_link", childname)
         child_link_position   = child_link_transform.getPosition().toNumPy();
         child_link_rotation   = mathutils.Matrix(child_link_transform.getRotation().toNumPy());
-
         # Start defining the bone like parent->child link
         bchild.head = parent_link_position
         bchild.tail = child_link_position
@@ -183,7 +238,42 @@ def rigify(path):
         bone_list[childname] = bchild
         # Consider the y-axis orientation in the limits
         limits[model.getJointName(idyn_joint_idx)] = [min, max, jointtype]
+    
+    # exit edit mode to save bones so they can be used in pose mode
+    bpy.ops.object.mode_set(mode='OBJECT')
+    # just for checking that the map link->mesh is ok.
+    #for k,v in meshMap.items():
+    #    print(k,v)
 
+    # Now iterate over all the joints(bones) and link them to the meshes.
+    for idyn_joint_idx in range(model.getNrOfJoints()):
+        # The joint should move the child link(?)
+        childIdx = traversal.getChildLinkIndexFromJointIndex(model,
+                                                              idyn_joint_idx)
+        childname = model.getLinkName(childIdx)
+        if childname not in meshMap.keys():
+            continue
+        jointname = model.getJointName(idyn_joint_idx)
+        meshname = meshMap[childname]
+        meshobj = bpy.data.objects[meshname]
+
+        bpy.ops.object.select_all(action='DESELECT')
+        armature_data.select_set(True)
+        bpy.context.view_layer.objects.active = armature_data
+
+        bpy.ops.object.mode_set(mode='EDIT')
+
+        edit_bones.active = edit_bones[jointname]
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        bpy.ops.object.select_all(action='DESELECT') #deselect all objects
+        meshobj.select_set(True)
+        armature_data.select_set(True)
+        bpy.context.view_layer.objects.active = armature_data     #the active object will be the parent of all selected object
+
+        bpy.ops.object.parent_set(type='BONE', keep_transform=True)
+    
     # configure the bones limits
     bpy.ops.object.mode_set(mode='POSE')
     for pbone in pose_bones:
@@ -218,90 +308,6 @@ def rigify(path):
         # TODO not sure if it is the right rotation_mode
         pbone.rotation_mode = 'XYZ'
 
-    # exit edit mode to save bones so they can be used in pose mode
-    bpy.ops.object.mode_set(mode='OBJECT')
-    meshMap = {}
-    meshesInfo = {}
-
-    # import meshes and do the mapping to the link
-    for link_id in range(model.getNrOfLinks()):
-        if len(linkVisual[link_id]) == 0:
-            continue
-        if not linkVisual[link_id][0].isExternalMesh():
-            continue
-        meshesInfo[model.getLinkName(link_id)] = linkVisual[link_id][0].asExternalMesh()
-        filePath = meshesInfo[model.getLinkName(link_id)].getFileLocationOnLocalFileSystem()
-        linkname = model.getLinkName(link_id)
-        # import the mesh
-        if ".stl" in filePath:
-            bpy.ops.import_mesh.stl(filepath=os.path.join(filePath),global_scale=0.001)
-        elif ".ply" in filePath:
-            bpy.ops.import_mesh.ply(filepath=os.path.join(filePath),global_scale=0.001)
-        elif ".dae" in filePath:
-            bpy.ops.wm.collada_import(filepath=os.path.join(filePath)) #TODO check how to handle scale here !
-        meshName = ""
-        # We are assuming we are starting in a clean environment
-        if not meshMap.keys() :
-            meshName = bpy.data.meshes.keys()[0]
-        else:
-            for mesh in bpy.data.meshes:
-                if mesh.name not in meshMap.values():
-                    meshName = mesh.name
-                    break
-        meshMap[linkname] = meshName
-
-    # just for checking that the map link->mesh is ok.
-    #for k,v in meshMap.items():
-    #    print(k,v)
-
-    # Place the meshes
-    for link_id in range(model.getNrOfLinks()):
-        linkname = model.getLinkName(link_id)
-        meshname = meshMap[linkname]
-        meshobj = bpy.data.objects[meshname]
-        # root->link transform
-        RtoLinktransform = dynComp.getRelativeTransform("root_link", linkname)
-        # link->geometry transform
-        LinkToGtransform = meshesInfo[linkname].getLink_H_geometry()
-        # root->geometry transform
-        RToGtransform = RtoLinktransform * LinkToGtransform
-
-        meshobj.location = RToGtransform.getPosition().toNumPy()
-        meshobj.rotation_mode = "QUATERNION"
-        meshobj.rotation_quaternion = RToGtransform.getRotation().asQuaternion()
-        #print(meshesInfo[linkname].getLink_H_geometry())
-        #print(bone_list[linkname].name)
-        #bpy.data.objects[meshname].parent_type = 'BONE'
-       #bpy.data.objects[meshname].parent   = bpy.data.objects[linkname]
-
-    # Now iterate over all the joints(bones) and link them to the meshes.
-    for idyn_joint_idx in range(model.getNrOfJoints()):
-        # The joint should move the child link(?)
-        childIdx = traversal.getChildLinkIndexFromJointIndex(model,
-                                                              idyn_joint_idx)
-        childname = model.getLinkName(childIdx)
-        jointname = model.getJointName(idyn_joint_idx)
-        meshname = meshMap[childname]
-        meshobj = bpy.data.objects[meshname]
-
-        bpy.ops.object.select_all(action='DESELECT')
-        armature_data.select_set(True)
-        bpy.context.view_layer.objects.active = armature_data
-
-        bpy.ops.object.mode_set(mode='EDIT')
-
-        edit_bones.active = edit_bones[jointname]
-
-        bpy.ops.object.mode_set(mode='OBJECT')
-
-        bpy.ops.object.select_all(action='DESELECT') #deselect all objects
-        meshobj.select_set(True)
-        armature_data.select_set(True)
-        bpy.context.view_layer.objects.active = armature_data     #the active object will be the parent of all selected object
-
-        bpy.ops.object.parent_set(type='BONE', keep_transform=True)
-    # Set in pose mode and select local
-    bpy.ops.object.mode_set(mode='POSE')
     bpy.context.scene.transform_orientation_slots[0].type = 'LOCAL'
 
 
