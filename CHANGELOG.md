@@ -10,4 +10,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `blenderRCBPanel` python script that spawns a panel for controlling parts of
   the robot(for now tested only with iCub).
 - Added `urdfToBlender` python script that creates a rig starting from a urdf of a robot.
-- Added `icub2_5.blend` and `icub3.blend`.
+- Added `iCubBlenderV2_5.blend` and `iCubBlenderV3.blend`.
