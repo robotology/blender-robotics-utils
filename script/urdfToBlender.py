@@ -103,7 +103,7 @@ def rigify(path):
         elif ".ply" in filePath:
             bpy.ops.import_mesh.ply(filepath=os.path.join(filePath),global_scale=0.001)
         elif ".dae" in filePath:
-            bpy.ops.wm.collada_import(filepath=os.path.join(filePath)) #TODO check how to handle scale here !
+            bpy.ops.wm.collada_import(filepath=os.path.join(filePath), import_units=True) #TODO check how to handle scale here !
         meshName = ""
         # We are assuming we are starting in a clean environment
         if not meshMap.keys() :
@@ -120,8 +120,6 @@ def rigify(path):
         meshMap[linkname] = meshName
 
     # Place the meshes
-    print(meshMap)
-    print(bpy.data.objects)
     for link_id in range(model.getNrOfLinks()):
         linkname = model.getLinkName(link_id)
         if linkname not in meshMap.keys():
@@ -223,7 +221,6 @@ def rigify(path):
         child_link_transform  = dynComp.getRelativeTransform("root_link", childname)
         child_link_position   = child_link_transform.getPosition().toNumPy();
         child_link_rotation   = mathutils.Matrix(child_link_transform.getRotation().toNumPy());
-
         # Start defining the bone like parent->child link
         bchild.head = parent_link_position
         bchild.tail = child_link_position
@@ -241,41 +238,7 @@ def rigify(path):
         bone_list[childname] = bchild
         # Consider the y-axis orientation in the limits
         limits[model.getJointName(idyn_joint_idx)] = [min, max, jointtype]
-
-    # configure the bones limits
-    bpy.ops.object.mode_set(mode='POSE')
-    for pbone in pose_bones:
-        bone_name = pbone.basename
-        pbone.lock_location = (True, True, True)
-        pbone.lock_rotation = (True, True, True)
-        pbone.lock_scale = (True, True, True)
-        # root_link is a special case, it is a bone that has not correspondences to the joints
-        if bone_name == "root_link":
-            continue
-        lim = limits[bone_name]
-        # check the nr of DOFs
-        if lim[2] == "FIXED" :
-            continue
-
-        c = pbone.constraints.new('LIMIT_ROTATION')
-        c.owner_space = 'LOCAL'
-
-        if lim[2] == "REVOLUTE":
-            # The bones should rotate around y-axis
-            pbone.lock_rotation[1] = False
-        elif lim[2] == "PRISMATIC":
-            # The bones should move along y-axis
-            pbone.lock_location[1] = False
-        if lim:
-            c.use_limit_y = True
-            # TODO maybe we have to put also the ik constraints ???
-            #print(bone_name, math.degrees(lim[0]), math.degrees(lim[1]))
-            c.min_y = lim[0] # min
-            c.max_y = lim[1] # max
-
-        # TODO not sure if it is the right rotation_mode
-        pbone.rotation_mode = 'XYZ'
-
+    
     # exit edit mode to save bones so they can be used in pose mode
     bpy.ops.object.mode_set(mode='OBJECT')
     # just for checking that the map link->mesh is ok.
@@ -310,8 +273,41 @@ def rigify(path):
         bpy.context.view_layer.objects.active = armature_data     #the active object will be the parent of all selected object
 
         bpy.ops.object.parent_set(type='BONE', keep_transform=True)
-    # Set in pose mode and select local
+    
+    # configure the bones limits
     bpy.ops.object.mode_set(mode='POSE')
+    for pbone in pose_bones:
+        bone_name = pbone.basename
+        pbone.lock_location = (True, True, True)
+        pbone.lock_rotation = (True, True, True)
+        pbone.lock_scale = (True, True, True)
+        # root_link is a special case, it is a bone that has not correspondences to the joints
+        if bone_name == "root_link":
+            continue
+        lim = limits[bone_name]
+        # check the nr of DOFs
+        if lim[2] == "FIXED" :
+            continue
+
+        c = pbone.constraints.new('LIMIT_ROTATION')
+        c.owner_space = 'LOCAL'
+
+        if lim[2] == "REVOLUTE":
+            # The bones should rotate around y-axis
+            pbone.lock_rotation[1] = False
+        elif lim[2] == "PRISMATIC":
+            # The bones should move along y-axis
+            pbone.lock_location[1] = False
+        if lim:
+            c.use_limit_y = True
+            # TODO maybe we have to put also the ik constraints ???
+            #print(bone_name, math.degrees(lim[0]), math.degrees(lim[1]))
+            c.min_y = lim[0] # min
+            c.max_y = lim[1] # max
+
+        # TODO not sure if it is the right rotation_mode
+        pbone.rotation_mode = 'XYZ'
+
     bpy.context.scene.transform_orientation_slots[0].type = 'LOCAL'
 
 
