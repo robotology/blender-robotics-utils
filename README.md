@@ -51,7 +51,7 @@ After selecting the urdf, the script creates the rig of the robot in term of arm
 
 |**iCub 2.5** | **iCub 3**|
 |:---:|:---:|
-| ![immagine](https://user-images.githubusercontent.com/19152494/126991916-39b97bd1-da3b-4114-8597-9d835ad835a1.png) | ![immagine](https://user-images.githubusercontent.com/19152494/131349166-bb03316e-a40e-4147-9c36-dbc5bcb48e41.png) |
+| ![immagine](https://user-images.githubusercontent.com/19152494/126991916-39b97bd1-da3b-4114-8597-9d835ad835a1.png) | ![immagine](https://user-images.githubusercontent.com/19152494/126991957-feb4eb6b-5ae0-4d3b-bfef-4ec05a5eaf10.png) |
 
 
 ### Known limitations
