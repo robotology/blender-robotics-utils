@@ -17,6 +17,19 @@ from bpy_extras.io_utils import ImportHelper
 from bpy.types import Operator
 
 
+def createGeometricShape(iDynTree_solidshape):
+    if iDynTree_solidshape.isSphere():
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=iDynTree_solidshape.asSphere().getRadius())
+    elif iDynTree_solidshape.isCylinder():
+        cylinder = iDynTree_solidshape.asCylinder()
+        bpy.ops.mesh.primitive_cylinder_add(radius=cylinder.getRadius(), depth=cylinder.getLength())
+    elif iDynTree_solidshape.isBox():
+        bpy.ops.mesh.primitive_cube_add(size=iDynTree_solidshape.asBox().getX()) # Seems that blender support only cubes
+    else:
+        print("Geometric shape not supported")
+        return False
+    return True
+
 def rigify(path):
 
     armature_name = ""
@@ -92,18 +105,21 @@ def rigify(path):
     for link_id in range(model.getNrOfLinks()):
         if len(linkVisual[link_id]) == 0:
             continue
-        if not linkVisual[link_id][0].isExternalMesh():
-            continue
-        meshesInfo[model.getLinkName(link_id)] = linkVisual[link_id][0].asExternalMesh()
-        filePath = meshesInfo[model.getLinkName(link_id)].getFileLocationOnLocalFileSystem()
+        meshesInfo[model.getLinkName(link_id)] = linkVisual[link_id][0]
         linkname = model.getLinkName(link_id)
-        # import the mesh
-        if ".stl" in filePath:
-            bpy.ops.import_mesh.stl(filepath=os.path.join(filePath),global_scale=0.001)
-        elif ".ply" in filePath:
-            bpy.ops.import_mesh.ply(filepath=os.path.join(filePath),global_scale=0.001)
-        elif ".dae" in filePath:
-            bpy.ops.wm.collada_import(filepath=os.path.join(filePath), import_units=True) #TODO check how to handle scale here !
+        if meshesInfo[model.getLinkName(link_id)].isExternalMesh():
+            # import the mesh
+            filePath = meshesInfo[model.getLinkName(link_id)].asExternalMesh().getFileLocationOnLocalFileSystem()
+            if ".stl" in filePath:
+                bpy.ops.import_mesh.stl(filepath=os.path.join(filePath),global_scale=0.001)
+            elif ".ply" in filePath:
+                bpy.ops.import_mesh.ply(filepath=os.path.join(filePath),global_scale=0.001)
+            elif ".dae" in filePath:
+                bpy.ops.wm.collada_import(filepath=os.path.join(filePath), import_units=True) #TODO check how to handle scale here !
+        else:
+            # it is a basic geometry(sphere, cylinder, box)
+            if not createGeometricShape(meshesInfo[model.getLinkName(link_id)]):
+                continue
         meshName = ""
         # We are assuming we are starting in a clean environment
         if not meshMap.keys() :
@@ -113,10 +129,6 @@ def rigify(path):
                 if mesh.name not in meshMap.values():
                     meshName = mesh.name
                     break
-        # DEBUG, TO BE REMOVED.
-        if ".dae" in filePath:
-            print(linkname,meshName)
-
         meshMap[linkname] = meshName
 
     # Place the meshes
@@ -238,7 +250,7 @@ def rigify(path):
         bone_list[childname] = bchild
         # Consider the y-axis orientation in the limits
         limits[model.getJointName(idyn_joint_idx)] = [min, max, jointtype]
-    
+
     # exit edit mode to save bones so they can be used in pose mode
     bpy.ops.object.mode_set(mode='OBJECT')
     # just for checking that the map link->mesh is ok.
@@ -273,7 +285,7 @@ def rigify(path):
         bpy.context.view_layer.objects.active = armature_data     #the active object will be the parent of all selected object
 
         bpy.ops.object.parent_set(type='BONE', keep_transform=True)
-    
+
     # configure the bones limits
     bpy.ops.object.mode_set(mode='POSE')
     for pbone in pose_bones:
