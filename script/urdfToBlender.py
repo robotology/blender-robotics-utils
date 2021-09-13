@@ -24,7 +24,10 @@ def createGeometricShape(iDynTree_solidshape):
         cylinder = iDynTree_solidshape.asCylinder()
         bpy.ops.mesh.primitive_cylinder_add(radius=cylinder.getRadius(), depth=cylinder.getLength())
     elif iDynTree_solidshape.isBox():
-        bpy.ops.mesh.primitive_cube_add(size=iDynTree_solidshape.asBox().getX()) # Seems that blender support only cubes
+        box = iDynTree_solidshape.asBox()
+        if box.getX() != box.getY() or box.getZ() != box.getX() or box.getZ() != box.getY():
+            print("WARNING: the box has different dimensions along the three axis but it will be imported as cube with size equal to the X length")
+        bpy.ops.mesh.primitive_cube_add(size=box.getX()) # Seems that blender support only cubes
     else:
         print("Geometric shape not supported")
         return False
