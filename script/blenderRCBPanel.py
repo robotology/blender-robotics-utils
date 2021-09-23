@@ -100,7 +100,14 @@ def move(dummy):
                 print("The target", target, "it is outside the boundaries (", min, ",", max, "), skipping.")
                 continue
 
-            if abs(encs[joint] - target) > threshold:
+            safety_check=None
+            # The icub hands encoders are not reliable for the safety check.
+            if mytool.my_armature == "iCub" and joint > 5 :
+                safety_check = False
+            else:
+                safety_check = (abs(encs[joint] - target) > threshold)
+
+            if safety_check:
                 print("The target is too far, reaching in position control, for joint", joint_name, "by ", abs(encs[joint] - target), " degrees" )
 
                 # Pause the animation
