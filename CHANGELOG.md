@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### `urdfToBlender`
+
 - Added the support in urdfToBlender for the basic geometries
+
+### `rigs`
+
 - Added `iCubBlenderV2_5_visuomanip.blend`.
+
+### `blenderRCBPanel`
+
+- Added changes for controlling iCub hands.
 
 ## [0.1.0] - 2021-08-30
 
