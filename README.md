@@ -6,9 +6,10 @@ This repository contains utilities for exporting/controlling your robot in [Blen
 ## Maintainers
 This repository is maintained by:
 
-| | |
-|:---:|:---:|
-| [<img src="https://github.com/Nicogene.png" width="40">](https://github.com/niNicogenecogene) | [@Nicogene](https://github.com/Nicogene) |
+| | | |
+|:---:|:---:|:---:|
+ [<img src="https://github.com/Nicogene.png" width="60">](https://github.com/niNicogenecogene) | [@Nicogene](https://github.com/Nicogene) | <img src="https://user-images.githubusercontent.com/4537987/134487985-e66b9dae-767d-4c3b-9ce1-9e6fb19cf07a.png" width="200"> |
+
 
 ## urdfToBlender
 Python script that given the urdf of a robot as input, define the complete rig, in terms of bones, meshes and joint limits.
