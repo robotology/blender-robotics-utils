@@ -9,6 +9,7 @@ import copy
 import mathutils
 import math
 import os
+import sys
 import idyntree.bindings as iDynTree
 import xml.etree.ElementTree as ET
 
@@ -356,12 +357,26 @@ def unregister():
     bpy.utils.unregister_class(OT_TestOpenFilebrowser)
 
 # Main function
-def main():
+def main(urdf_filename, blend_filename):
     register()
-    bpy.ops.test.open_filebrowser('INVOKE_DEFAULT')
+    if urdf_filename is None:
+        bpy.ops.test.open_filebrowser('INVOKE_DEFAULT')
+    else:
+        rigify(urdf_filename)
+        bpy.ops.wm.save_as_mainfile(filepath=blend_filename)
 
 
 
 # Execute main()
 if __name__=='__main__':
-    main()
+    argv = sys.argv
+    try:
+        urdf_filename = argv[argv.index("--urdf_filename") + 1]
+    except ValueError:
+        urdf_filename = None
+    try:
+        blend_filename = argv[argv.index("--blend_filename") + 1]
+    except ValueError:
+        blend_filename = "./robot.blend"
+    main(urdf_filename, blend_filename)
+
