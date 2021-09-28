@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### `urdfToBlender`
 
 - Added the support in urdfToBlender for the basic geometries
+- Added the possibility to run it headless.
 
 ### `rigs`
 
