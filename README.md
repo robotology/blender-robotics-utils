@@ -30,6 +30,9 @@ conda env config vars set PYTHONPATH=/where/the/bindings/are/installed
 where `<blender_py_ver>` is the python version used inside Blender.
 
 ### Usage
+
+#### With GUI
+
 Once installed correctly the dependencies run:
 
 (Windows Powershell)
@@ -47,6 +50,21 @@ It will open a dialog for selecting the urdf to be converted to rig.
 ![immagine](https://user-images.githubusercontent.com/19152494/126337119-6b899183-1f2a-413c-8b88-4e5727818891.png)
 
 After selecting the urdf, the script creates the rig of the robot in term of armature and meshes.
+
+#### Without GUI
+
+It is also possible to run this script from the command line interface, in this case you have to specify the `urdf_fiename`
+to be converted and optionally the `blend_filename` to be saved(by default it saves `robot.blend` in the current directory).
+
+(Windows Powershell)
+```
+ "C:\Program Files\Blender Foundation\Blender <blender_version>\blender.exe" --python-use-system-env -b -P "C:\where\you\have\blender-robotics-utils\script\urdfToBlender.py" -- --urdf_filename "C:\where\you\have\model.urdf" --blend_filename "C:\where\you\want\to\save\myrobot.blend"
+
+```
+(Linux & macOs)
+```
+$ blender --python-use-system-env -b -P "/where/you/have/blender-robotics-utils/script/urdfToBlender.py" -- --urdf_filename "/where/you/have/model.urdf" --blend_filename "/where/you/want/to/save/myrobot.blend"
+```
 
 ### Examples
 
