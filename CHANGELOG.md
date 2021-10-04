@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Added action for automatically generate the rigs every time a commit
+  is made in [`icub-models`](https://github.com/robotology/icub-models)
+
 ### `urdfToBlender`
 
 - Added the support in urdfToBlender for the basic geometries
