@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2021-11-29
+
 - Added action for automatically generate the rigs every time a commit
   is made in [`icub-models`](https://github.com/robotology/icub-models)
 
