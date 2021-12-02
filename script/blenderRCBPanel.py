@@ -19,11 +19,13 @@ bl_info = {
 
 
 import bpy
-
+import os
 import sys
 import yarp
 import numpy as np
 import math
+import json
+from bpy_extras.io_utils import ImportHelper
 
 from bpy.props import (StringProperty,
                        BoolProperty,
@@ -38,6 +40,8 @@ from bpy.types import (Panel,
                        Operator,
                        PropertyGroup,
                        )
+
+combo_box_items = []
 # ------------------------------------------------------------------------
 #    Structures
 # ------------------------------------------------------------------------
@@ -131,6 +135,8 @@ def move(dummy):
 # ------------------------------------------------------------------------
 #    Scene Properties
 # ------------------------------------------------------------------------
+def getItems(self, context):
+    return combo_box_items
 
 class MyProperties(PropertyGroup):
 
@@ -189,13 +195,7 @@ class MyProperties(PropertyGroup):
     my_enum: EnumProperty(
         name="Dropdown:",
         description="Parts:",
-        items=[ ('head', "Head", ""),
-                ('left_arm', "Left arm", ""),
-                ('right_arm', "Right arm", ""),
-                ('torso', "Torso", ""),
-                ('left_leg', "Left leg", ""),
-                ('right_leg', "Right leg", ""),
-               ]
+        items=getItems
         )
 
 class WM_OT_Disconnect(bpy.types.Operator):
@@ -278,6 +278,18 @@ class WM_OT_Connect(bpy.types.Operator):
 
         return {'FINISHED'}
 
+class WM_OT_Configure(bpy.types.Operator):
+    bl_label = "Configure"
+    bl_idname = "wm.configure"
+
+    def execute(self, context):
+        scene = bpy.context.scene
+        mytool = scene.my_tool
+
+        bpy.ops.rcb_panel.open_filebrowser('INVOKE_DEFAULT')
+
+        return {'FINISHED'}
+
 # ------------------------------------------------------------------------
 #    Panel in Object Mode
 # ------------------------------------------------------------------------
@@ -291,6 +303,7 @@ class OBJECT_PT_robot_controller(Panel):
     bl_context = "posemode"
     row_connect = None
     row_disconnect = None
+    row_configure = None
 
 
     @classmethod
@@ -304,28 +317,63 @@ class OBJECT_PT_robot_controller(Panel):
         part_name = mytool.my_enum
         rcb_wrapper = bpy.types.Scene.rcb_wrapper
 
+        row_configure = layout.row(align=True)
+        row_configure.operator("wm.configure")
+        box = layout.box()
+        box.label(text="Selection Tools")
         #layout.prop(mytool, "my_bool")
-        layout.prop(mytool, "my_enum", text="")
-        layout.prop(mytool, "my_armature")
-        layout.prop(mytool, "my_string")
-        row_connect = layout.row(align=True)
+        box.prop(mytool, "my_enum", text="")
+        box.prop(mytool, "my_armature")
+        box.prop(mytool, "my_string")
+        row_connect = box.row(align=True)
         row_connect.operator("wm.connect")
         layout.separator()
-        row_disconnect = layout.row(align=True)
+        row_disconnect = box.row(align=True)
         row_disconnect.operator("wm.disconnect")
         layout.separator()
-
-        if bpy.context.screen.is_animation_playing:
-            row_disconnect.enabled = False
-            row_connect.enabled = False
+        
+        if len(combo_box_items) == 0:
+            box.enabled = False
         else:
-            if part_name  in rcb_wrapper.keys():
-                row_disconnect.enabled = True
+            box.enabled = True
+            row_configure.enabled = False
+            if bpy.context.screen.is_animation_playing:
+                row_disconnect.enabled = False
                 row_connect.enabled = False
             else:
-                row_disconnect.enabled = False
-                row_connect.enabled = True
+                if part_name  in rcb_wrapper.keys():
+                    row_disconnect.enabled = True
+                    row_connect.enabled = False
+                else:
+                    row_disconnect.enabled = False
+                    row_connect.enabled = True
 
+class OT_OpenConfigurationFile(Operator, ImportHelper):
+
+    bl_idname = "rcb_panel.open_filebrowser"
+    bl_label = "Select the configuration file"
+
+    filter_glob: StringProperty(
+        default='*.json',
+        options={'HIDDEN'}
+    )
+
+    def parse_conf(self, filepath, context):
+        f = open(filepath)
+        data = json.load(f)
+
+        scene = context.scene
+        mytool = scene.my_tool
+        part_name = mytool.my_enum
+
+        for p in data['parts']:
+            combo_box_items.append((p[0], p[1], ""))
+
+    def execute(self, context):
+        filename, extension = os.path.splitext(self.filepath)
+        self.parse_conf(self.filepath, context)
+        return {'FINISHED'}
+    
 # ------------------------------------------------------------------------
 #    Registration
 # ------------------------------------------------------------------------
@@ -334,7 +382,9 @@ classes = (
     MyProperties,
     WM_OT_Disconnect,
     WM_OT_Connect,
-    OBJECT_PT_robot_controller
+    WM_OT_Configure,
+    OBJECT_PT_robot_controller,
+    OT_OpenConfigurationFile
 )
 
 def register():
