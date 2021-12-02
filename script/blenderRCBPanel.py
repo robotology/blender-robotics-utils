@@ -201,6 +201,7 @@ class MyProperties(PropertyGroup):
 class WM_OT_Disconnect(bpy.types.Operator):
     bl_label = "Disconnect"
     bl_idname = "wm.disconnect"
+    bl_description= "disconnect the selected part(s)"
 
     def execute(self, context):
         scene = bpy.context.scene
@@ -220,6 +221,7 @@ class WM_OT_Disconnect(bpy.types.Operator):
 class WM_OT_Connect(bpy.types.Operator):
     bl_label = "Connect"
     bl_idname = "wm.connect"
+    bl_description= "connect the selected part(s)"
 
     def execute(self, context):
         scene = bpy.context.scene
@@ -281,6 +283,7 @@ class WM_OT_Connect(bpy.types.Operator):
 class WM_OT_Configure(bpy.types.Operator):
     bl_label = "Configure"
     bl_idname = "wm.configure"
+    bl_description= "configure the parts by uploading a configuration file (.json format)"
 
     def execute(self, context):
         scene = bpy.context.scene
