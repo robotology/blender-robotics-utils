@@ -34,14 +34,15 @@ from bpy.props import (StringProperty,
                        FloatVectorProperty,
                        EnumProperty,
                        PointerProperty,
+                       CollectionProperty
                        )
 from bpy.types import (Panel,
                        Menu,
                        Operator,
                        PropertyGroup,
+                       UIList
                        )
 
-combo_box_items = []
 # ------------------------------------------------------------------------
 #    Structures
 # ------------------------------------------------------------------------
@@ -135,8 +136,6 @@ def move(dummy):
 # ------------------------------------------------------------------------
 #    Scene Properties
 # ------------------------------------------------------------------------
-def getItems(self, context):
-    return combo_box_items
 
 class MyProperties(PropertyGroup):
 
@@ -192,11 +191,36 @@ class MyProperties(PropertyGroup):
         subtype='DIR_PATH'
         )
 
-    my_enum: EnumProperty(
-        name="Dropdown:",
-        description="Parts:",
-        items=getItems
-        )
+class ListItem(PropertyGroup):
+    value: StringProperty(
+           name="Name",
+           description="A name for this item",
+           default="Untitled")
+
+    viewValue: StringProperty(
+           name="Displayed Name",
+           description="",
+           default="")
+    
+    isConnected: BoolProperty(
+        name="",
+        default = False
+    )
+
+class MY_UL_List(UIList):
+
+    def draw_item(self, context, layout, data, item, icon, active_data,
+                  active_propname, index):
+        if (item.isConnected):
+            custom_icon = 'LINKED' 
+        else: 
+            custom_icon = 'UNLINKED'
+
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.label(text=item.viewValue, icon = custom_icon)
+        elif self.layout_type in {'GRID'}:
+            layout.alignment = 'CENTER'
+            layout.label(text=item.viewValue, icon = custom_icon)
 
 class WM_OT_Disconnect(bpy.types.Operator):
     bl_label = "Disconnect"
@@ -205,16 +229,16 @@ class WM_OT_Disconnect(bpy.types.Operator):
 
     def execute(self, context):
         scene = bpy.context.scene
-        mytool = scene.my_tool
-
-        rcb_instance = bpy.types.Scene.rcb_wrapper[mytool.my_enum]
+        parts = scene.my_list
+        rcb_instance = bpy.types.Scene.rcb_wrapper[getattr(parts[scene.list_index], "value")]
 
         if rcb_instance is None:
             return {'CANCELLED'}
         rcb_instance.driver.close()
 
-        del bpy.types.Scene.rcb_wrapper[mytool.my_enum]
-
+        del bpy.types.Scene.rcb_wrapper[getattr(parts[scene.list_index], "value")]
+        
+        setattr(parts[scene.list_index], "isConnected", False)
 
         return {'FINISHED'}
 
@@ -225,7 +249,9 @@ class WM_OT_Connect(bpy.types.Operator):
 
     def execute(self, context):
         scene = bpy.context.scene
+        parts = scene.my_list
         mytool = scene.my_tool
+        
         yarp.Network.init()
         if not yarp.Network.checkNetwork():
             print ('YARP server is not running!')
@@ -237,8 +263,8 @@ class WM_OT_Connect(bpy.types.Operator):
         # set the poly driver options
         options.put("robot", mytool.my_string)
         options.put("device", "remote_controlboard")
-        options.put("local", "/blender_controller/client/"+mytool.my_enum)
-        options.put("remote", "/"+mytool.my_string+"/"+mytool.my_enum)
+        options.put("local", "/blender_controller/client/"+getattr(parts[scene.list_index], "value"))
+        options.put("remote", "/"+mytool.my_string+"/"+getattr(parts[scene.list_index], "value"))
 
         # opening the drivers
         print ('Opening the motor driver...')
@@ -270,10 +296,10 @@ class WM_OT_Connect(bpy.types.Operator):
             ilim.getLimits(joint, min.data(), max.data())
             joint_limits.append([min.get(0), max.get(0)])
 
-
-
-        register_rcb(rcb_wrapper(driver, icm, iposDir, ipos, ienc, encs, iax, joint_limits), mytool.my_enum)
-
+        register_rcb(rcb_wrapper(driver, icm, iposDir, ipos, ienc, encs, iax, joint_limits), getattr(parts[scene.list_index], "value"))
+        
+        setattr(parts[scene.list_index], "isConnected", True)
+        
         # TODO check if we need this
         #bpy.app.handlers.frame_change_post.clear()
         #bpy.app.handlers.frame_change_post.append(move)
@@ -317,15 +343,14 @@ class OBJECT_PT_robot_controller(Panel):
         layout = self.layout
         scene = context.scene
         mytool = scene.my_tool
-        part_name = mytool.my_enum
         rcb_wrapper = bpy.types.Scene.rcb_wrapper
-
         row_configure = layout.row(align=True)
         row_configure.operator("wm.configure")
         box = layout.box()
         box.label(text="Selection Tools")
-        #layout.prop(mytool, "my_bool")
-        box.prop(mytool, "my_enum", text="")
+        box.template_list("MY_UL_List", "The_List", scene,
+                          "my_list", scene, "list_index")
+
         box.prop(mytool, "my_armature")
         box.prop(mytool, "my_string")
         row_connect = box.row(align=True)
@@ -335,16 +360,15 @@ class OBJECT_PT_robot_controller(Panel):
         row_disconnect.operator("wm.disconnect")
         layout.separator()
         
-        if len(combo_box_items) == 0:
+        if len(context.scene.my_list) == 0:
             box.enabled = False
         else:
             box.enabled = True
-            row_configure.enabled = False
             if bpy.context.screen.is_animation_playing:
                 row_disconnect.enabled = False
                 row_connect.enabled = False
             else:
-                if part_name  in rcb_wrapper.keys():
+                if getattr(parts[scene.list_index], "value") in rcb_wrapper.keys():
                     row_disconnect.enabled = True
                     row_connect.enabled = False
                 else:
@@ -364,13 +388,12 @@ class OT_OpenConfigurationFile(Operator, ImportHelper):
     def parse_conf(self, filepath, context):
         f = open(filepath)
         data = json.load(f)
-
-        scene = context.scene
-        mytool = scene.my_tool
-        part_name = mytool.my_enum
+        context.scene.my_list.clear()
 
         for p in data['parts']:
-            combo_box_items.append((p[0], p[1], ""))
+            item = context.scene.my_list.add()
+            item.value = p[0]
+            item.viewValue = p[1]  
 
     def execute(self, context):
         filename, extension = os.path.splitext(self.filepath)
@@ -387,7 +410,9 @@ classes = (
     WM_OT_Connect,
     WM_OT_Configure,
     OBJECT_PT_robot_controller,
-    OT_OpenConfigurationFile
+    OT_OpenConfigurationFile,
+    ListItem,
+    MY_UL_List
 )
 
 def register():
@@ -396,6 +421,9 @@ def register():
         register_class(cls)
 
     bpy.types.Scene.my_tool = PointerProperty(type=MyProperties)
+    bpy.types.Scene.my_list = CollectionProperty(type = ListItem)
+    bpy.types.Scene.list_index = IntProperty(name = "Index for my_list",
+                                             default = 0)
 
     # initialize the dict
     bpy.types.Scene.rcb_wrapper = {}
@@ -408,6 +436,8 @@ def unregister():
     for cls in reversed(classes):
         unregister_class(cls)
     del bpy.types.Scene.my_tool
+    del bpy.types.Scene.my_list
+    del bpy.types.Scene.list_index
 
     # remove the callback
     bpy.app.handlers.frame_change_post.clear()
