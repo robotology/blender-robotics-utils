@@ -342,6 +342,7 @@ class OBJECT_PT_robot_controller(Panel):
     def draw(self, context):
         layout = self.layout
         scene = context.scene
+        parts = scene.my_list
         mytool = scene.my_tool
         rcb_wrapper = bpy.types.Scene.rcb_wrapper
         row_configure = layout.row(align=True)
