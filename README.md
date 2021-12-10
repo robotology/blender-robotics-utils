@@ -88,11 +88,25 @@ https://user-images.githubusercontent.com/19152494/125633637-26f74b75-390b-409e-
 Python script that creates a panel inside the pose mode for connecting parts of the rig to the parts of the real robot(or simulator).
 For using it follow [the instructions like the other scripts](https://github.com/robotology/blender-robotics-utils#usage) open `blenderRCBPanel` and the run it.
 If every went fine you should have this panel on the right under the `Tools` section.
+First of all you have to configure it loading a `.json` file representing the structure of your robot like this one:
+```json
+{
+    "parts": [
+        ["torso", "Torso"],
+        ["head", "Head"],
+        ["left_arm", "Left arm"],
+        ["right_arm", "Right arm"],
+        ["left_leg", "Left leg"],
+        ["right_leg", "Right leg"]
+    ]
+}
 
-Then select the parts you want to control, press connect and then have fun!
+```
+It should contain a list of pair where the first value will be the "YARP name" of the part, and the second one will be the name displayed in the list.
+Once configured, select the parts you want to control, press connect and then have fun!
 This has been tested with `iCub 2.5`.
 
-https://user-images.githubusercontent.com/19152494/127869281-84fd7f0a-f579-4996-b7df-4df9a22828ae.mp4
+https://user-images.githubusercontent.com/60427731/145424773-e17e29b9-2229-4d3c-8f5e-fe40bd7725b6.mp4
 
 ### Known limitations
 - We are assuming that the robot has these 5 parts:
