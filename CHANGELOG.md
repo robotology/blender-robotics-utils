@@ -6,9 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Added robot's parts configuration through a JSON file structured as the [proposed template](https://github.com/robotology/blender-robotics-utils/blob/master/script/conf/parts.json)
 
 ## [0.2.0] - 2021-11-29
-
 - Added action for automatically generate the rigs every time a commit
   is made in [`icub-models`](https://github.com/robotology/icub-models)
 
