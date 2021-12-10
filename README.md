@@ -109,12 +109,6 @@ This has been tested with `iCub 2.5`.
 https://user-images.githubusercontent.com/60427731/145424773-e17e29b9-2229-4d3c-8f5e-fe40bd7725b6.mp4
 
 ### Known limitations
-- We are assuming that the robot has these 5 parts:
-  - `head`
-  - `torso`
-  - `left_arm`
-  - `right_arm`
-  - `left_leg`
-  - `right_leg`
+
 - We are controlling sequentially all the parts connected, this may lead to some discrepancies between the animation and the movements. This can be improved using multithreading and/or using a remapper.
 
