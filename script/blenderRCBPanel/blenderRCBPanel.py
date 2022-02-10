@@ -4,25 +4,11 @@
 # This software may be modified and distributed under the terms of the
 # BSD-3-Clause license. See the accompanying LICENSE file for details.
 
-bl_info = {
-    "name": "Add-on Template",
-    "description": "",
-    "author": "Nicogene",
-    "version": (0, 0, 1),
-    "blender": (2, 80, 0),
-    "location": "3D View > Tools",
-    "warning": "", # used for warning icon and text in addons panel
-    "wiki_url": "",
-    "tracker_url": "",
-    "category": "Development"
-}
-
-
 import bpy
 import os
-import sys
+# import sys
 import yarp
-import numpy as np
+# import numpy as np
 import math
 import json
 from bpy_extras.io_utils import ImportHelper
@@ -334,10 +320,9 @@ class OBJECT_PT_robot_controller(Panel):
     row_disconnect = None
     row_configure = None
 
-
-    @classmethod
-    def poll(self,context):
-        return context.object is not None
+    # @classmethod
+    # def poll(cls, context):
+    #     return context.object is not None
 
     def draw(self, context):
         layout = self.layout
@@ -360,7 +345,7 @@ class OBJECT_PT_robot_controller(Panel):
         row_disconnect = box.row(align=True)
         row_disconnect.operator("wm.disconnect")
         layout.separator()
-        
+
         if len(context.scene.my_list) == 0:
             box.enabled = False
         else:
@@ -375,6 +360,7 @@ class OBJECT_PT_robot_controller(Panel):
                 else:
                     row_disconnect.enabled = False
                     row_connect.enabled = True
+
 
 class OT_OpenConfigurationFile(Operator, ImportHelper):
 
@@ -401,48 +387,3 @@ class OT_OpenConfigurationFile(Operator, ImportHelper):
         self.parse_conf(self.filepath, context)
         return {'FINISHED'}
     
-# ------------------------------------------------------------------------
-#    Registration
-# ------------------------------------------------------------------------
-
-classes = (
-    MyProperties,
-    WM_OT_Disconnect,
-    WM_OT_Connect,
-    WM_OT_Configure,
-    OBJECT_PT_robot_controller,
-    OT_OpenConfigurationFile,
-    ListItem,
-    MY_UL_List
-)
-
-def register():
-    from bpy.utils import register_class
-    for cls in classes:
-        register_class(cls)
-
-    bpy.types.Scene.my_tool = PointerProperty(type=MyProperties)
-    bpy.types.Scene.my_list = CollectionProperty(type = ListItem)
-    bpy.types.Scene.list_index = IntProperty(name = "Index for my_list",
-                                             default = 0)
-
-    # initialize the dict
-    bpy.types.Scene.rcb_wrapper = {}
-
-    # init the callback
-    bpy.app.handlers.frame_change_post.append(move)
-
-def unregister():
-    from bpy.utils import unregister_class
-    for cls in reversed(classes):
-        unregister_class(cls)
-    del bpy.types.Scene.my_tool
-    del bpy.types.Scene.my_list
-    del bpy.types.Scene.list_index
-
-    # remove the callback
-    bpy.app.handlers.frame_change_post.clear()
-
-
-if __name__ == "__main__":
-    register()
