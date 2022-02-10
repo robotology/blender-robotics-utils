@@ -77,16 +77,24 @@ $ blender --python-use-system-env -b -P "/where/you/have/blender-robotics-utils/
 - Only fixed or revolute joints are handled(see https://github.com/robotology/idyntree/issues/881, it requires iDynTree >= 3.3.0).
 - Only `.stl`, `.ply` and `.dae` format are supported for meshes.
 
-## iCubNeckBlenderController 🚧
-Simple demo script that opens a [YARP `remote_controlboard`](http://yarp.it/latest/classRemoteControlBoard.html#details) for controlling the iCub head, and attach to the animations frames a callback for moving the joints accordingly to the movements of the rig.
-Since it is script that has been created with the purpose to show the potentialities of Blender in robotics, this will be not improved/extended or maintained.
-Here is a video showing this simple controller on iCub.
-
-https://user-images.githubusercontent.com/19152494/125633637-26f74b75-390b-409e-bde1-d1e326f50c23.mp4
 
 ## blenderRCBPanel 🚧
 Python script that creates a panel inside the pose mode for connecting parts of the rig to the parts of the real robot(or simulator).
-For using it follow [the instructions like the other scripts](https://github.com/robotology/blender-robotics-utils#usage) open `blenderRCBPanel` and the run it.
+For using it follow these instructions:
+
+Create a symbolic link to the folder "blenderRCBPanel" in the local blender config folder.
+
+```console
+$ cd ~/.config/blender/<blender_version>/scripts/addons/
+$ ln -s /where/you/cloned/blender-robotics-utils/script/blenderRCBPanel  blenderRCBPanel
+```
+
+Going to Edit > Preferences > Add-ons > Community you should find the add-on.
+Select it to be able to use it
+
+![issue914-1](https://user-images.githubusercontent.com/19833605/153264876-878da020-3fdb-4c08-b866-ae3a507d5658.jpg)
+
+
 If every went fine you should have this panel on the right under the `Tools` section.
 First of all you have to configure it loading a `.json` file representing the structure of your robot like this one:
 ```json
@@ -107,6 +115,7 @@ Once configured, select the parts you want to control, press connect and then ha
 This has been tested with `iCub 2.5`.
 
 https://user-images.githubusercontent.com/60427731/145424773-e17e29b9-2229-4d3c-8f5e-fe40bd7725b6.mp4
+
 
 ### Known limitations
 

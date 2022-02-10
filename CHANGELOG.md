@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### `blenderRCBPanel`
 
 - Added robot's parts configuration through a JSON file structured as the [proposed template](https://github.com/robotology/blender-robotics-utils/blob/master/script/conf/parts.json)
+- Code refactored to be able to display the panel in the list of add-ons of blender
 
 ## [0.2.0] - 2021-11-29
 - Added action for automatically generate the rigs every time a commit
