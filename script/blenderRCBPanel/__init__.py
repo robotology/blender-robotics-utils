@@ -1,6 +1,6 @@
 bl_info = {
-    "name": "Robotics Utils",
-    "description": "",
+    "name": "RemoteControlBoard Panel",
+    "description": "Panel for attaching the remote_controlboard of a YARP-based robot",
     "author": "Nicogene",
     "version": (0, 0, 1),
     "blender": (2, 80, 0),
