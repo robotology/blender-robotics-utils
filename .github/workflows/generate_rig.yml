@@ -62,7 +62,7 @@ jobs:
             echo $_model
             _version=$(echo $_model | grep -o -P '(?<=iCubGazeboV).*(?=/model)')
             echo $_version
-            blender --python-use-system-env -b -P "./script/urdfToBlender.py" -- --urdf_filename /home/runner/install/share/iCub/robots/iCubGazeboV${_version}/model.urdf --blend_filename ./rigs/iCubBlenderV${_version}.blend
+            blender --python-use-system-env -b -P "./script/urdfToBlender/urdfToBlender.py" -- --urdf_filename /home/runner/install/share/iCub/robots/iCubGazeboV${_version}/model.urdf --blend_filename ./rigs/iCubBlenderV${_version}.blend
           done
           ls -la ./rigs
 
