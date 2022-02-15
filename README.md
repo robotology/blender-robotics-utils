@@ -12,7 +12,7 @@ This repository is maintained by:
 
 
 ## urdfToBlender
-Python script that given the urdf of a robot as input, define the complete rig, in terms of bones, meshes and joint limits.
+Panel/Python script that given the urdf of a robot as input, define the complete rig, in terms of bones, meshes and joint limits.
 ### Dependencies
 - Blender > 2.79
 - [iDynTree](https://github.com/robotology/idyntree) python bindings
@@ -44,8 +44,21 @@ Once installed correctly the dependencies run:
 $ blender --python-use-system-env
 ```
 
-Go to "Scripting" section, open `urdfToBlender`, then run.
-It will open a dialog for selecting the urdf to be converted to rig.
+Then install the addon
+
+```console
+$ cd ~/.config/blender/<blender_version>/scripts/addons/
+$ ln -s /where/you/cloned/blender-robotics-utils/script/urdfToBlender  urdfToBlender
+```
+Going to Edit > Preferences > Add-ons > Testing:
+
+![immagine](https://user-images.githubusercontent.com/19152494/154102247-16bfaf2e-1387-467f-a878-ed7cec306111.png)
+
+If everything went fine you should have this panel on the right under the `Tools` section:
+
+![immagine](https://user-images.githubusercontent.com/19152494/154102335-76c5312a-81ea-46b5-92cc-93d0668596e7.png)
+
+After clicking "Select the urdf" it will be opened a file browse such as:
 
 ![immagine](https://user-images.githubusercontent.com/19152494/126337119-6b899183-1f2a-413c-8b88-4e5727818891.png)
 
@@ -95,7 +108,7 @@ Select it to be able to use it
 ![issue914-1](https://user-images.githubusercontent.com/19833605/153264876-878da020-3fdb-4c08-b866-ae3a507d5658.jpg)
 
 
-If every went fine you should have this panel on the right under the `Tools` section.
+If everything went fine you should have this panel on the right under the `Tools` section.
 First of all you have to configure it loading a `.json` file representing the structure of your robot like this one:
 ```json
 {
