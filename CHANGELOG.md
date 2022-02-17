@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### `urdfToBlender`
+
+- Code refactored for displaying the converter as panel that can be installed as addon.
+
 ### `blenderRCBPanel`
 
 - Added robot's parts configuration through a JSON file structured as the [proposed template](https://github.com/robotology/blender-robotics-utils/blob/master/script/conf/parts.json)

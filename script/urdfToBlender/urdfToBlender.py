@@ -15,7 +15,11 @@ import xml.etree.ElementTree as ET
 
 from bpy.props import StringProperty, BoolProperty
 from bpy_extras.io_utils import ImportHelper
-from bpy.types import Operator
+from bpy.types import (Panel,
+                       Menu,
+                       Operator,
+                       PropertyGroup,
+                       )
 
 
 def createGeometricShape(iDynTree_solidshape):
@@ -327,9 +331,9 @@ def rigify(path):
     bpy.context.scene.transform_orientation_slots[0].type = 'LOCAL'
 
 
-class OT_TestOpenFilebrowser(Operator, ImportHelper):
+class WM_OT_OpenFilebrowser(Operator, ImportHelper):
 
-    bl_idname = "test.open_filebrowser"
+    bl_idname = "wm.open_filebrowser"
     bl_label = "Select the urdf"
 
     filter_glob: StringProperty(
@@ -349,21 +353,26 @@ class OT_TestOpenFilebrowser(Operator, ImportHelper):
 
         return {'FINISHED'}
 
+class OBJECT_PT_urdf2blender_converter(Panel):
+    bl_label = "URDF to Blender converter"
+    bl_idname = "OBJECT_PT_urdf2blender_converter"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Tools"
+    bl_context = "objectmode"
+    row_convert = None
 
-def register():
-    bpy.utils.register_class(OT_TestOpenFilebrowser)
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        row_configure = layout.row(align=True)
+        row_configure.operator("wm.open_filebrowser")
 
-def unregister():
-    bpy.utils.unregister_class(OT_TestOpenFilebrowser)
 
 # Main function
 def main(urdf_filename, blend_filename):
-    register()
-    if urdf_filename is None:
-        bpy.ops.test.open_filebrowser('INVOKE_DEFAULT')
-    else:
-        rigify(urdf_filename)
-        bpy.ops.wm.save_as_mainfile(filepath=blend_filename)
+    rigify(urdf_filename)
+    bpy.ops.wm.save_as_mainfile(filepath=blend_filename)
 
 
 
