@@ -11,8 +11,7 @@ This repository is maintained by:
  [<img src="https://github.com/Nicogene.png" width="60">](https://github.com/niNicogenecogene) | [@Nicogene](https://github.com/Nicogene) | <img src="https://user-images.githubusercontent.com/4537987/134487985-e66b9dae-767d-4c3b-9ce1-9e6fb19cf07a.png" width="200"> |
 
 
-## urdfToBlender
-Panel/Python script that given the urdf of a robot as input, define the complete rig, in terms of bones, meshes and joint limits.
+## Addons installation
 ### Dependencies
 - Blender > 2.79
 - [iDynTree](https://github.com/robotology/idyntree) python bindings
@@ -29,9 +28,17 @@ conda env config vars set PYTHONPATH=/where/the/bindings/are/installed
 ```
 where `<blender_py_ver>` is the python version used inside Blender.
 
-### Usage
+### Installation
+The addons can be installed by running the following command:
+```console
+blender -b -P ./script/addons_installer.py
+```
 
-#### With GUI
+## urdfToBlender
+Panel/Python script that given the urdf of a robot as input, define the complete rig, in terms of bones, meshes and joint limits.
+
+
+### Usage with GUI
 
 Once installed correctly the dependencies run:
 
@@ -44,17 +51,7 @@ Once installed correctly the dependencies run:
 $ blender --python-use-system-env
 ```
 
-Then install the addon
-
-```console
-$ cd ~/.config/blender/<blender_version>/scripts/addons/
-$ ln -s /where/you/cloned/blender-robotics-utils/script/urdfToBlender  urdfToBlender
-```
-Going to Edit > Preferences > Add-ons > Testing:
-
-![immagine](https://user-images.githubusercontent.com/19152494/154102247-16bfaf2e-1387-467f-a878-ed7cec306111.png)
-
-If everything went fine you should have this panel on the right under the `Tools` section:
+If the installation went fine you should have this panel on the right under the `Tools` section:
 
 ![immagine](https://user-images.githubusercontent.com/19152494/154102335-76c5312a-81ea-46b5-92cc-93d0668596e7.png)
 
@@ -64,7 +61,7 @@ After clicking "Select the urdf" it will be opened a file browse such as:
 
 After selecting the urdf, the script creates the rig of the robot in term of armature and meshes.
 
-#### Without GUI
+### Usage without GUI
 
 It is also possible to run this script from the command line interface, in this case you have to specify the `urdf_fiename`
 to be converted and optionally the `blend_filename` to be saved(by default it saves `robot.blend` in the current directory).
@@ -93,22 +90,8 @@ $ blender --python-use-system-env -b -P "/where/you/have/blender-robotics-utils/
 
 ## blenderRCBPanel 🚧
 Python script that creates a panel inside the pose mode for connecting parts of the rig to the parts of the real robot(or simulator).
-For using it follow these instructions:
 
-Create a symbolic link to the folder "blenderRCBPanel" in the local blender config folder.
-
-```console
-$ cd ~/.config/blender/<blender_version>/scripts/addons/
-$ ln -s /where/you/cloned/blender-robotics-utils/script/blenderRCBPanel  blenderRCBPanel
-```
-
-Going to Edit > Preferences > Add-ons > Community you should find the add-on.
-Select it to be able to use it
-
-![issue914-1](https://user-images.githubusercontent.com/19833605/153264876-878da020-3fdb-4c08-b866-ae3a507d5658.jpg)
-
-
-If everything went fine you should have this panel on the right under the `Tools` section.
+If the installation went fine you should have this panel on the right under the `Tools` section.
 First of all you have to configure it loading a `.json` file representing the structure of your robot like this one:
 ```json
 {
