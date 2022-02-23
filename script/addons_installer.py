@@ -10,14 +10,15 @@ from  distutils import dir_util
 import os
 
 addon_path = bpy.utils.user_resource('SCRIPTS', path="addons", create=True)
+print("Installing blender addons in", addon_path)
 addon_urdfToBlender = os.path.join(addon_path, 'urdfToBlender')
 addon_blenderRCBPanel = os.path.join(addon_path, 'blenderRCBPanel')
 
-origin_path_urdfToBlender = '/home/marcello/teamcode/blender-robotics-utils/script/urdfToBlender/'
-origin_path_blenderRCBPanel = '/home/marcello/teamcode/blender-robotics-utils/script/blenderRCBPanel/'
+origin_path_urdfToBlender = os.path.abspath('urdfToBlender/')
+origin_path_blenderRCBPanel = os.path.abspath('blenderRCBPanel/')
 
-dir_util.copy_tree(origin_path_urdfToBlender, addon_urdfToBlender) 
-dir_util.copy_tree(origin_path_blenderRCBPanel, addon_blenderRCBPanel) 
+dir_util.copy_tree(origin_path_urdfToBlender, addon_urdfToBlender)
+dir_util.copy_tree(origin_path_blenderRCBPanel, addon_blenderRCBPanel)
 
 bpy.ops.preferences.addon_enable(module='urdfToBlender')
 bpy.ops.preferences.addon_enable(module='blenderRCBPanel')
