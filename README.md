@@ -31,7 +31,9 @@ where `<blender_py_ver>` is the python version used inside Blender.
 ### Installation
 The addons can be installed by running the following command:
 ```console
-blender -b -P ./script/addons_installer.py
+conda activate blenderenv
+cd blender-robotics-utils/script
+blender -b -P ./addons_installer.py
 ```
 
 ## urdfToBlender
