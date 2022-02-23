@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### `addons_installer`
+
+- Added python script for installing and enabling the blender addons of this
+  repository.
+
 ### `urdfToBlender`
 
 - Code refactored for displaying the converter as panel that can be installed as addon.
