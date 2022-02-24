@@ -74,11 +74,6 @@ def register():
     # initialize the dict
     bpy.types.Scene.rcb_wrapper = {}
 
-    try:
-        # init the callback
-        bpy.app.handlers.frame_change_post.append(move)
-    except:
-        print("a problem when initialising the callback")
 
 def unregister():
     for cls in reversed(classes):

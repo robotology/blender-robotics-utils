@@ -187,7 +187,7 @@ class ListItem(PropertyGroup):
            name="Displayed Name",
            description="",
            default="")
-    
+
     isConnected: BoolProperty(
         name="",
         default = False
@@ -198,8 +198,8 @@ class MY_UL_List(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data,
                   active_propname, index):
         if (item.isConnected):
-            custom_icon = 'LINKED' 
-        else: 
+            custom_icon = 'LINKED'
+        else:
             custom_icon = 'UNLINKED'
 
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
@@ -223,7 +223,7 @@ class WM_OT_Disconnect(bpy.types.Operator):
         rcb_instance.driver.close()
 
         del bpy.types.Scene.rcb_wrapper[getattr(parts[scene.list_index], "value")]
-        
+
         setattr(parts[scene.list_index], "isConnected", False)
 
         return {'FINISHED'}
@@ -237,7 +237,7 @@ class WM_OT_Connect(bpy.types.Operator):
         scene = bpy.context.scene
         parts = scene.my_list
         mytool = scene.my_tool
-        
+
         yarp.Network.init()
         if not yarp.Network.checkNetwork():
             print ('YARP server is not running!')
@@ -283,9 +283,9 @@ class WM_OT_Connect(bpy.types.Operator):
             joint_limits.append([min.get(0), max.get(0)])
 
         register_rcb(rcb_wrapper(driver, icm, iposDir, ipos, ienc, encs, iax, joint_limits), getattr(parts[scene.list_index], "value"))
-        
+
         setattr(parts[scene.list_index], "isConnected", True)
-        
+
         # TODO check if we need this
         #bpy.app.handlers.frame_change_post.clear()
         #bpy.app.handlers.frame_change_post.append(move)
@@ -302,6 +302,12 @@ class WM_OT_Configure(bpy.types.Operator):
         mytool = scene.my_tool
 
         bpy.ops.rcb_panel.open_filebrowser('INVOKE_DEFAULT')
+
+        try:
+            # init the callback
+            bpy.app.handlers.frame_change_post.append(move)
+        except:
+            print("a problem when initialising the callback")
 
         return {'FINISHED'}
 
@@ -380,10 +386,10 @@ class OT_OpenConfigurationFile(Operator, ImportHelper):
         for p in data['parts']:
             item = context.scene.my_list.add()
             item.value = p[0]
-            item.viewValue = p[1]  
+            item.viewValue = p[1]
 
     def execute(self, context):
         filename, extension = os.path.splitext(self.filepath)
         self.parse_conf(self.filepath, context)
         return {'FINISHED'}
-    
+
