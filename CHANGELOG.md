@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2022-02-28
+
 ### `addons_installer`
 
 - Added python script for installing and enabling the blender addons of this
