@@ -123,14 +123,17 @@ class AllJoints:
 
     def __init__(self):
         self.annotations = {}
+        self.joint_names = []
         self.generate_joint_classes()
 
     def generate_joint_classes(self):
 
-        my_list = ["joint 1", "joint 2", "something elses"]
+        self.joint_names = bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones.keys()
 
-        #for joint in bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones.keys():
-        for joint in my_list:
+
+        # for joint_name, joint in bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones.items():
+
+        for joint in self.joint_names:
             self.annotations[joint] = FloatProperty(
                 name = joint,
                 description = joint,
@@ -197,8 +200,6 @@ class MyProperties(PropertyGroup):
         maxlen=1024,
         subtype='DIR_PATH'
         )
-
-    #__annotations__: AllJoints().generate_joint_classes()
 
 
 class ListItem(PropertyGroup):
@@ -345,8 +346,7 @@ class WM_OT_Configure(bpy.types.Operator):
                 {"__annotations__": robot.annotations},
         )
 
-        my_list = ["joint 1", "joint 2", "something elses"]
-        OBJECT_PT_robot_controller.set_joint_names(my_list)
+        # OBJECT_PT_robot_controller.set_joint_names(my_list)
         bpy.utils.register_class(JointProperties)
         bpy.types.Scene.my_joints = PointerProperty(type=JointProperties)
 
@@ -401,22 +401,13 @@ class OBJECT_PT_robot_controller(Panel):
         box_joints = layout.box()
         box_joints.label(text="joint angles")
 
-        #my_float: FloatProperty(
-        #    name = "Threshold(degrees)",
-        #    description = "Threshold for the safety checks",
-        #    default = 5.0,
-        #    min = 2.0,
-        #    max = 15.0)
         try:
             scene.my_joints
         except AttributeError:
             pass
         else:
-            my_list = ["joint 1", "joint 2", "something elses"]
-            #for joint in bpy.data.objects[mytool.my_armature].pose.bones.keys():
-            for joint in my_list:
+            for joint in bpy.data.objects[mytool.my_armature].pose.bones.keys():
                 box_joints.prop(scene.my_joints, joint)
-                
 
         if len(context.scene.my_list) == 0:
             box.enabled = False
