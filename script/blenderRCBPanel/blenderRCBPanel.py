@@ -119,6 +119,27 @@ def move(dummy):
                 iposDir.setPosition(joint,target)
 
 
+class AllJoints:
+
+    def __init__(self):
+        self.annotations = {}
+        self.generate_joint_classes()
+
+    def generate_joint_classes(self):
+
+        my_list = ["joint 1", "joint 2", "something elses"]
+
+        #for joint in bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones.keys():
+        for joint in my_list:
+            self.annotations[joint] = FloatProperty(
+                name = joint,
+                description = joint,
+                default = 0,
+                min = 0,  # an example.
+                max = 100,   # another example.
+            )
+
+
 # ------------------------------------------------------------------------
 #    Scene Properties
 # ------------------------------------------------------------------------
@@ -176,6 +197,9 @@ class MyProperties(PropertyGroup):
         maxlen=1024,
         subtype='DIR_PATH'
         )
+
+    #__annotations__: AllJoints().generate_joint_classes()
+
 
 class ListItem(PropertyGroup):
     value: StringProperty(
@@ -309,6 +333,23 @@ class WM_OT_Configure(bpy.types.Operator):
         except:
             print("a problem when initialising the callback")
 
+        robot = AllJoints()
+
+        # Dynamically create the same class
+        JointProperties = type(
+            # Class name
+            "JointProperties",
+
+            # Base class
+            (bpy.types.PropertyGroup, ),
+                {"__annotations__": robot.annotations},
+        )
+
+        my_list = ["joint 1", "joint 2", "something elses"]
+        OBJECT_PT_robot_controller.set_joint_names(my_list)
+        bpy.utils.register_class(JointProperties)
+        bpy.types.Scene.my_joints = PointerProperty(type=JointProperties)
+
         return {'FINISHED'}
 
 # ------------------------------------------------------------------------
@@ -322,13 +363,16 @@ class OBJECT_PT_robot_controller(Panel):
     bl_region_type = "UI"
     bl_category = "Tools"
     bl_context = "posemode"
-    row_connect = None
-    row_disconnect = None
-    row_configure = None
+
+    joint_name = []
 
     # @classmethod
     # def poll(cls, context):
     #     return context.object is not None
+
+    @staticmethod
+    def set_joint_names(joint_names):
+        OBJECT_PT_robot_controller.joint_names = joint_names
 
     def draw(self, context):
         layout = self.layout
@@ -336,14 +380,16 @@ class OBJECT_PT_robot_controller(Panel):
         parts = scene.my_list
         mytool = scene.my_tool
         rcb_wrapper = bpy.types.Scene.rcb_wrapper
-        row_configure = layout.row(align=True)
-        row_configure.operator("wm.configure")
+
+        box_configure = layout.box()
+        box_configure.prop(mytool, "my_armature")
+        box_configure.operator("wm.configure")
+
         box = layout.box()
         box.label(text="Selection Tools")
         box.template_list("MY_UL_List", "The_List", scene,
                           "my_list", scene, "list_index")
 
-        box.prop(mytool, "my_armature")
         box.prop(mytool, "my_string")
         row_connect = box.row(align=True)
         row_connect.operator("wm.connect")
@@ -352,10 +398,32 @@ class OBJECT_PT_robot_controller(Panel):
         row_disconnect.operator("wm.disconnect")
         layout.separator()
 
+        box_joints = layout.box()
+        box_joints.label(text="joint angles")
+
+        #my_float: FloatProperty(
+        #    name = "Threshold(degrees)",
+        #    description = "Threshold for the safety checks",
+        #    default = 5.0,
+        #    min = 2.0,
+        #    max = 15.0)
+        try:
+            scene.my_joints
+        except AttributeError:
+            pass
+        else:
+            my_list = ["joint 1", "joint 2", "something elses"]
+            #for joint in bpy.data.objects[mytool.my_armature].pose.bones.keys():
+            for joint in my_list:
+                box_joints.prop(scene.my_joints, joint)
+                
+
         if len(context.scene.my_list) == 0:
             box.enabled = False
+            box_configure.enabled = True
         else:
             box.enabled = True
+            box_configure.enabled = False
             if bpy.context.screen.is_animation_playing:
                 row_disconnect.enabled = False
                 row_connect.enabled = False
@@ -366,6 +434,7 @@ class OBJECT_PT_robot_controller(Panel):
                 else:
                     row_disconnect.enabled = False
                     row_connect.enabled = True
+                    
 
 
 class OT_OpenConfigurationFile(Operator, ImportHelper):
