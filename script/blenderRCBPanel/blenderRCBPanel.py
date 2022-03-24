@@ -119,6 +119,22 @@ def move(dummy):
                 iposDir.setPosition(joint,target)
 
 
+def float_callback(self, context):
+    # Callback for sliders. Find each object in the links dictionary and set its rotation.
+    try:
+        joint_tool = context.scene.my_joints
+        pose_bones = bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones
+        for joint_name, joint_value in joint_tool.items():
+            joint = pose_bones[joint_name]
+            # It is a prismatic joint (to be tested)
+            if joint.lock_rotation[1]:
+                joint.delta_location[1] = joint_value
+            # It is a revolute joint
+            else:
+                joint.rotation_euler[1] = joint_value * math.pi / 180.0
+    except AttributeError:
+        pass
+
 class AllJoints:
 
     def __init__(self):
@@ -130,16 +146,32 @@ class AllJoints:
 
         self.joint_names = bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones.keys()
 
+        for joint_name, joint in bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones.items():
+            
+            # Our bones rotate around y (revolute joint), translate along y (prismatic joint), if both are locked, it
+            # means it is a fixed joint.
+            if joint.lock_rotation[1] and joint.lock_location[1]:
+                continue;
+            
+            joint_min = -360
+            joint_max =  360
+            
+            rot_constraint = None
+            for constraint in joint.constraints:
+                if constraint.type == "LIMIT_ROTATION":
+                    rot_constraint = constraint
+                    break
+            if rot_constraint is not None:
+                joint_min = rot_constraint.min_y * 180 / math.pi
+                joint_max = rot_constraint.max_y * 180 / math.pi
 
-        # for joint_name, joint in bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones.items():
-
-        for joint in self.joint_names:
-            self.annotations[joint] = FloatProperty(
-                name = joint,
-                description = joint,
+            self.annotations[joint_name] = FloatProperty(
+                name = joint_name,
+                description = joint_name,
                 default = 0,
-                min = 0,  # an example.
-                max = 100,   # another example.
+                min = joint_min,
+                max = joint_max,
+                update = float_callback,
             )
 
 
@@ -406,19 +438,26 @@ class OBJECT_PT_robot_controller(Panel):
         except AttributeError:
             pass
         else:
-            for joint in bpy.data.objects[mytool.my_armature].pose.bones.keys():
-                box_joints.prop(scene.my_joints, joint)
+            for joint_name, joint in bpy.data.objects[mytool.my_armature].pose.bones.items():
+                # Our bones rotate around y (revolute joint), translate along y (prismatic joint), if both are locked, it
+                # means it is a fixed joint.
+                if joint.lock_rotation[1] and joint.lock_location[1]:
+                    continue;
+                box_joints.prop(scene.my_joints, joint_name)
 
         if len(context.scene.my_list) == 0:
             box.enabled = False
             box_configure.enabled = True
+            box_joints.enabled = False
         else:
             box.enabled = True
             box_configure.enabled = False
             if bpy.context.screen.is_animation_playing:
                 row_disconnect.enabled = False
                 row_connect.enabled = False
+                box_joints.enabled = False
             else:
+                box_joints.enabled = True
                 if getattr(parts[scene.list_index], "value") in rcb_wrapper.keys():
                     row_disconnect.enabled = True
                     row_connect.enabled = False
