@@ -132,6 +132,8 @@ def float_callback(self, context):
             # It is a revolute joint
             else:
                 joint.rotation_euler[1] = joint_value * math.pi / 180.0
+                joint.keyframe_insert(data_path="rotation_euler")
+
     except AttributeError:
         pass
 
