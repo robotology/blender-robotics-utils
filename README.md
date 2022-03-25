@@ -112,7 +112,8 @@ It should contain a list of pair where the first value will be the "YARP name" o
 Once configured, select the parts you want to control, press connect and then have fun!
 This has been tested with `iCub 2.5`.
 
-https://user-images.githubusercontent.com/60427731/145424773-e17e29b9-2229-4d3c-8f5e-fe40bd7725b6.mp4
+https://user-images.githubusercontent.com/19833605/159922346-0bc9cd53-1a5a-4ea1-a7f7-453bdbdc1547.mp4
+
 
 
 ### Known limitations

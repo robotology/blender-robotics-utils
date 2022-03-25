@@ -119,6 +119,64 @@ def move(dummy):
                 iposDir.setPosition(joint,target)
 
 
+def float_callback(self, context):
+    # Callback for sliders. Find each object in the links dictionary and set its rotation.
+    try:
+        joint_tool = context.scene.my_joints
+        pose_bones = bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones
+        for joint_name, joint_value in joint_tool.items():
+            joint = pose_bones[joint_name]
+            # It is a prismatic joint (to be tested)
+            if joint.lock_rotation[1]:
+                joint.delta_location[1] = joint_value
+            # It is a revolute joint
+            else:
+                joint.rotation_euler[1] = joint_value * math.pi / 180.0
+                joint.keyframe_insert(data_path="rotation_euler")
+
+    except AttributeError:
+        pass
+
+class AllJoints:
+
+    def __init__(self):
+        self.annotations = {}
+        self.joint_names = []
+        self.generate_joint_classes()
+
+    def generate_joint_classes(self):
+
+        self.joint_names = bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones.keys()
+
+        for joint_name, joint in bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones.items():
+            
+            # Our bones rotate around y (revolute joint), translate along y (prismatic joint), if both are locked, it
+            # means it is a fixed joint.
+            if joint.lock_rotation[1] and joint.lock_location[1]:
+                continue;
+            
+            joint_min = -360
+            joint_max =  360
+            
+            rot_constraint = None
+            for constraint in joint.constraints:
+                if constraint.type == "LIMIT_ROTATION":
+                    rot_constraint = constraint
+                    break
+            if rot_constraint is not None:
+                joint_min = rot_constraint.min_y * 180 / math.pi
+                joint_max = rot_constraint.max_y * 180 / math.pi
+
+            self.annotations[joint_name] = FloatProperty(
+                name = joint_name,
+                description = joint_name,
+                default = 0,
+                min = joint_min,
+                max = joint_max,
+                update = float_callback,
+            )
+
+
 # ------------------------------------------------------------------------
 #    Scene Properties
 # ------------------------------------------------------------------------
@@ -176,6 +234,7 @@ class MyProperties(PropertyGroup):
         maxlen=1024,
         subtype='DIR_PATH'
         )
+
 
 class ListItem(PropertyGroup):
     value: StringProperty(
@@ -309,6 +368,22 @@ class WM_OT_Configure(bpy.types.Operator):
         except:
             print("a problem when initialising the callback")
 
+        robot = AllJoints()
+
+        # Dynamically create the same class
+        JointProperties = type(
+            # Class name
+            "JointProperties",
+
+            # Base class
+            (bpy.types.PropertyGroup, ),
+                {"__annotations__": robot.annotations},
+        )
+
+        # OBJECT_PT_robot_controller.set_joint_names(my_list)
+        bpy.utils.register_class(JointProperties)
+        bpy.types.Scene.my_joints = PointerProperty(type=JointProperties)
+
         return {'FINISHED'}
 
 # ------------------------------------------------------------------------
@@ -322,13 +397,16 @@ class OBJECT_PT_robot_controller(Panel):
     bl_region_type = "UI"
     bl_category = "Tools"
     bl_context = "posemode"
-    row_connect = None
-    row_disconnect = None
-    row_configure = None
+
+    joint_name = []
 
     # @classmethod
     # def poll(cls, context):
     #     return context.object is not None
+
+    @staticmethod
+    def set_joint_names(joint_names):
+        OBJECT_PT_robot_controller.joint_names = joint_names
 
     def draw(self, context):
         layout = self.layout
@@ -336,14 +414,16 @@ class OBJECT_PT_robot_controller(Panel):
         parts = scene.my_list
         mytool = scene.my_tool
         rcb_wrapper = bpy.types.Scene.rcb_wrapper
-        row_configure = layout.row(align=True)
-        row_configure.operator("wm.configure")
+
+        box_configure = layout.box()
+        box_configure.prop(mytool, "my_armature")
+        box_configure.operator("wm.configure")
+
         box = layout.box()
         box.label(text="Selection Tools")
         box.template_list("MY_UL_List", "The_List", scene,
                           "my_list", scene, "list_index")
 
-        box.prop(mytool, "my_armature")
         box.prop(mytool, "my_string")
         row_connect = box.row(align=True)
         row_connect.operator("wm.connect")
@@ -352,20 +432,41 @@ class OBJECT_PT_robot_controller(Panel):
         row_disconnect.operator("wm.disconnect")
         layout.separator()
 
+        box_joints = layout.box()
+        box_joints.label(text="joint angles")
+
+        try:
+            scene.my_joints
+        except AttributeError:
+            pass
+        else:
+            for joint_name, joint in bpy.data.objects[mytool.my_armature].pose.bones.items():
+                # Our bones rotate around y (revolute joint), translate along y (prismatic joint), if both are locked, it
+                # means it is a fixed joint.
+                if joint.lock_rotation[1] and joint.lock_location[1]:
+                    continue;
+                box_joints.prop(scene.my_joints, joint_name)
+
         if len(context.scene.my_list) == 0:
             box.enabled = False
+            box_configure.enabled = True
+            box_joints.enabled = False
         else:
             box.enabled = True
+            box_configure.enabled = False
             if bpy.context.screen.is_animation_playing:
                 row_disconnect.enabled = False
                 row_connect.enabled = False
+                box_joints.enabled = False
             else:
+                box_joints.enabled = True
                 if getattr(parts[scene.list_index], "value") in rcb_wrapper.keys():
                     row_disconnect.enabled = True
                     row_connect.enabled = False
                 else:
                     row_disconnect.enabled = False
                     row_connect.enabled = True
+                    
 
 
 class OT_OpenConfigurationFile(Operator, ImportHelper):
