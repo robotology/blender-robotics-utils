@@ -8,6 +8,7 @@ import bpy
 import os
 # import sys
 import yarp
+import icub
 # import numpy as np
 import math
 import json
@@ -58,6 +59,7 @@ def unregister_rcb(rcb_name):
         del bpy.types.Scene.rcb_wrapper[rcb_name]
     except:
         pass
+
 
 def move(dummy):
     threshold = 10.0 # degrees
@@ -111,7 +113,7 @@ def move(dummy):
                 done = ipos.isMotionDone(joint)
                 while not done:
                     done = ipos.isMotionDone(joint)
-                    yarp.delay(0.001);
+                    yarp.delay(0.001)
                 # Once finished put the joints in position direct and replay the animation back
                 icm.setControlMode(joint, yarp.VOCAB_CM_POSITION_DIRECT)
                 bpy.ops.screen.animation_play()
@@ -153,7 +155,7 @@ class AllJoints:
             # Our bones rotate around y (revolute joint), translate along y (prismatic joint), if both are locked, it
             # means it is a fixed joint.
             if joint.lock_rotation[1] and joint.lock_location[1]:
-                continue;
+                continue
             
             joint_min = -360
             joint_max =  360
@@ -186,31 +188,31 @@ class MyProperties(PropertyGroup):
     my_bool: BoolProperty(
         name="Dry run",
         description="If ticked, the movement will not replayed",
-        default = False
+        default=False
         )
 
     my_int: IntProperty(
-        name = "Int Value",
+        name="Int Value",
         description="A integer property",
-        default = 23,
-        min = 10,
-        max = 100
+        default=23,
+        min=10,
+        max=100
         )
 
     my_float: FloatProperty(
-        name = "Threshold(degrees)",
-        description = "Threshold for the safety checks",
-        default = 5.0,
-        min = 2.0,
-        max = 15.0
+        name="Threshold(degrees)",
+        description="Threshold for the safety checks",
+        default=5.0,
+        min=2.0,
+        max=15.0
         )
 
     my_float_vector: FloatVectorProperty(
-        name = "Float Vector Value",
+        name="Float Vector Value",
         description="Something",
         default=(0.0, 0.0, 0.0),
-        min= 0.0, # float
-        max = 0.1
+        min=0.0,
+        max=0.1
     )
 
     my_string: StringProperty(
@@ -228,11 +230,59 @@ class MyProperties(PropertyGroup):
         )
 
     my_path: StringProperty(
-        name = "Directory",
+        name="Directory",
         description="Choose a directory:",
         default="",
         maxlen=1024,
         subtype='DIR_PATH'
+        )
+
+    my_reach_x: FloatProperty(
+        name="X",
+        description="The target along x axis",
+        default=0.0,
+        min = -100.0,
+        max = 100.0
+        )
+
+    my_reach_y: FloatProperty(
+        name="Y",
+        description="The target along y axis",
+        default=0.0,
+        min=-100.0,
+        max=100.0
+        )
+
+    my_reach_z: FloatProperty(
+        name="Z",
+        description="The target along z axis",
+        default=0.0,
+        min=-100.0,
+        max=100.0
+        )
+
+    my_reach_pitch: FloatProperty(
+        name="Pitch",
+        description="The target around Pitch",
+        default=0.0,
+        min=-360.0,
+        max=360.0
+        )
+
+    my_reach_yaw: FloatProperty(
+        name="Yaw",
+        description="The target around Yaw",
+        default=0.0,
+        min=-360.0,
+        max=360.0
+        )
+
+    my_reach_roll: FloatProperty(
+        name="Roll",
+        description="The target around Roll",
+        default=0.0,
+        min=-360.0,
+        max=360.0
         )
 
 
@@ -321,7 +371,7 @@ class WM_OT_Connect(bpy.types.Operator):
 
         # opening the drivers
         print ('Viewing motor position/encoders...')
-        icm  = driver.viewIControlMode()
+        icm = driver.viewIControlMode()
         iposDir = driver.viewIPositionDirect()
         ipos = driver.viewIPositionControl()
         ienc = driver.viewIEncoders()
@@ -386,6 +436,39 @@ class WM_OT_Configure(bpy.types.Operator):
 
         return {'FINISHED'}
 
+
+class WM_OT_ReachTarget(bpy.types.Operator):
+    bl_label = "Reach Target"
+    bl_idname = "wm.reach_target"
+
+    bl_description= "Reach the cartesian target"
+
+    def execute(self, context):
+        scene = bpy.context.scene
+        mytool = scene.my_tool
+
+        limbArm = icub.iCubArm("right")
+
+        chain = limbArm.asChain()
+
+        q0 = chain.getAng()
+
+        pose_target = yarp.Vector([mytool.my_reach_x,
+                                   mytool.my_reach_y,
+                                   mytool.my_reach_z,
+                                   mytool.my_reach_pitch,
+                                   mytool.my_reach_yaw,
+                                   mytool.my_reach_roll])
+
+        solver = icub.iKinIpOptMin(chain, icub.IKINCTRL_POSE_FULL, 1e-3, 1e-6, 100)
+        solver.setUserScaling(True, 100.0, 100.0, 100.0)
+        target_angles = solver.solve(q0, pose_target)
+
+        print(target_angles.toString())
+
+        return {'FINISHED'}
+
+
 # ------------------------------------------------------------------------
 #    Panel in Object Mode
 # ------------------------------------------------------------------------
@@ -432,6 +515,24 @@ class OBJECT_PT_robot_controller(Panel):
         row_disconnect.operator("wm.disconnect")
         layout.separator()
 
+        reach_box = layout.box()
+        reach_box.label(text="Reach target")
+
+        reach_box.label(text="xyz")
+        row_reach_xyz = reach_box.row(align=True)
+        row_reach_xyz.prop(mytool, "my_reach_x")
+        row_reach_xyz.prop(mytool, "my_reach_y")
+        row_reach_xyz.prop(mytool, "my_reach_z")
+
+        reach_box.label(text="pitch yaw roll")
+        row_reach_rpy = reach_box.row(align=True)
+        row_reach_rpy.prop(mytool, "my_reach_pitch")
+        row_reach_rpy.prop(mytool, "my_reach_yaw")
+        row_reach_rpy.prop(mytool, "my_reach_roll")
+        reach_box.operator("wm.reach_target")
+
+        layout.separator()
+
         box_joints = layout.box()
         box_joints.label(text="joint angles")
 
@@ -444,7 +545,7 @@ class OBJECT_PT_robot_controller(Panel):
                 # Our bones rotate around y (revolute joint), translate along y (prismatic joint), if both are locked, it
                 # means it is a fixed joint.
                 if joint.lock_rotation[1] and joint.lock_location[1]:
-                    continue;
+                    continue
                 box_joints.prop(scene.my_joints, joint_name)
 
         if len(context.scene.my_list) == 0:

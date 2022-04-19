@@ -33,7 +33,7 @@ The addons can be installed by running the following command:
 ```console
 conda activate blenderenv
 cd blender-robotics-utils/script
-blender -b -P ./addons_installer.py
+blender -b --python-use-system-env -P ./addons_installer.py
 ```
 
 ## urdfToBlender
