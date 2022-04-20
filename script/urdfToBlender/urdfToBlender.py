@@ -21,7 +21,6 @@ from bpy.types import (Panel,
                        PropertyGroup,
                        )
 
-
 def createGeometricShape(iDynTree_solidshape):
     if iDynTree_solidshape.isSphere():
         bpy.ops.mesh.primitive_uv_sphere_add(radius=iDynTree_solidshape.asSphere().getRadius())
@@ -49,10 +48,16 @@ def rigify(path):
     dynComp = iDynTree.KinDynComputations();
     mdlLoader = iDynTree.ModelLoader();
     mdlExporter = iDynTree.ModelExporter();
+    urdf_str = ""
+    with open(path, 'r') as file:
+        urdf_str = file.read()
     mdlLoader.loadModelFromFile(path);
 
     # Produce the reduced urdf
     model = mdlLoader.model()
+
+    # Save the model in the scene
+    bpy.context.scene['model_urdf'] = urdf_str
     traversal = iDynTree.Traversal()
     ok_traversal = model.computeFullTreeTraversal(traversal)
     print(ok_traversal)
@@ -388,4 +393,3 @@ if __name__=='__main__':
     except ValueError:
         blend_filename = "./robot.blend"
     main(urdf_filename, blend_filename)
-
