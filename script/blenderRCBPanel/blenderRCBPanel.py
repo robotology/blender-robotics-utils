@@ -8,7 +8,7 @@ import bpy
 import os
 # import sys
 import yarp
-import icub
+import idyntree.bindings as iDynTree
 # import numpy as np
 import math
 import json
@@ -44,6 +44,8 @@ class rcb_wrapper():
         self.encs = encs
         self.iax = iax
         self.joint_limits = joint_limits
+
+
 
 
 # ------------------------------------------------------------------------
@@ -151,15 +153,15 @@ class AllJoints:
         self.joint_names = bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones.keys()
 
         for joint_name, joint in bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones.items():
-            
+
             # Our bones rotate around y (revolute joint), translate along y (prismatic joint), if both are locked, it
             # means it is a fixed joint.
             if joint.lock_rotation[1] and joint.lock_location[1]:
-                continue
-            
+                continue;
+
             joint_min = -360
             joint_max =  360
-            
+
             rot_constraint = None
             for constraint in joint.constraints:
                 if constraint.type == "LIMIT_ROTATION":
@@ -446,25 +448,49 @@ class WM_OT_ReachTarget(bpy.types.Operator):
     def execute(self, context):
         scene = bpy.context.scene
         mytool = scene.my_tool
+        print(mytool)
+        ik = mytool.inverseKinematics
 
-        limbArm = icub.iCubArm("right")
+        # TODO remove hardcoding
+        base_frame = "base_link"
+        endeffector_frame = "r_hand"
+        # TODO maybe this can be done once ?
+        # Note: the InverseKinematics class actually implements a floating base inverse kinematics,
+        # meaning that both the joint position and the robot base are optimized to reach the desired cartesian position
+        # As in this example we are considering instead the fixed-base case, we impose that the desired position of the base
+        # is the identity
+        world_H_base = iDynTree.Transform.Identity()
+        ok = mytool.inverseKinematics.setFloatingBaseOnFrameNamed(base_frame)
+        ik.addFrameConstraint(base_frame, world_H_base)
 
-        chain = limbArm.asChain()
+        #base_H_ee_initial = self.mytool.dynComp.getRelativeTransform(base_frame, endeffector_frame);
 
-        q0 = chain.getAng()
+        # Define the transform of the selected cartesian target
+        base_H_ee_desired = iDynTree.Transform(iDynTree.Rotation.RPY(mytool.my_reach_roll*math.pi/180, mytool.my_reach_pitch*math.pi/180, mytool.my_reach_yaw*math.pi/180),
+                                               iDynTree.Position(mytool.my_reach_x, mytool.my_reach_y, mytool.my_reach_z))
 
-        pose_target = yarp.Vector([mytool.my_reach_x,
-                                   mytool.my_reach_y,
-                                   mytool.my_reach_z,
-                                   mytool.my_reach_pitch,
-                                   mytool.my_reach_yaw,
-                                   mytool.my_reach_roll])
+        # We want tha the end effector reaches the target
+        ok = ik.addTarget(endeffector_frame, base_H_ee_desired)
+        if not ok :
+            print("Impossible to add target on  ", endeffector_frame)
+            return {'CANCELLED'}
+        #not sure if we need it
+        #ik.setFullJointsInitialCondition(&world_H_base, &(jointPosInitialInRadians));
+        ok = ik.solve()
+        if not ok:
+            print("Impossible to solve inverse kinematics problem.")
+            return {'CANCELLED'}
 
-        solver = icub.iKinIpOptMin(chain, icub.IKINCTRL_POSE_FULL, 1e-3, 1e-6, 100)
-        solver.setUserScaling(True, 100.0, 100.0, 100.0)
-        target_angles = solver.solve(q0, pose_target)
+        base_transform = iDynTree.Transform.Identity()
+        joint_positions = iDynTree.VectorDynSize(ik.fullModel().getNrOfJoints())
 
-        print(target_angles.toString())
+        # Get the solution
+        ik.getFullJointsSolution(base_transform, joint_positions)
+
+        # Convert to numpy objects
+        joint_positions = joint_positions.toNumPy()
+
+        print("Here is the solution!", joint_positions)
 
         return {'FINISHED'}
 
@@ -480,8 +506,13 @@ class OBJECT_PT_robot_controller(Panel):
     bl_region_type = "UI"
     bl_category = "Tools"
     bl_context = "posemode"
-
     joint_name = []
+
+    def __init__(self):
+        print("INIT PANELLLLLLLLL")
+        self.iDynTreeModel = None
+        self.inverseKinematics = iDynTree.InverseKinematics()
+        self.dynComp = iDynTree.KinDynComputations()
 
     # @classmethod
     # def poll(cls, context):
@@ -492,6 +523,27 @@ class OBJECT_PT_robot_controller(Panel):
         OBJECT_PT_robot_controller.joint_names = joint_names
 
     def draw(self, context):
+        # Initialize just once all the iDynTree structure for the IK
+        if self.iDynTreeModel is None:
+            model_urdf = bpy.context.scene['model_urdf']
+            mdlLoader = iDynTree.ModelLoader()
+            mdlLoader.loadModelFromString(model_urdf)
+            self.iDynTreeModel=mdlLoader.model()
+            print("This is the Model!", self.iDynTreeModel)
+            self.inverseKinematics.setModel(self.iDynTreeModel)
+            # Setup the ik problem
+            self.inverseKinematics.setCostTolerance(0.0001)
+            self.inverseKinematics.setConstraintsTolerance(0.00001)
+            self.inverseKinematics.setDefaultTargetResolutionMode(iDynTree.InverseKinematicsTreatTargetAsConstraintNone)
+            self.inverseKinematics.setRotationParametrization(iDynTree.InverseKinematicsRotationParametrizationRollPitchYaw)
+
+            self.dynComp.loadRobotModel(self.iDynTreeModel)
+            dofs = self.dynComp.model().getNrOfDOFs()
+            s = iDynTree.VectorDynSize(dofs)
+            for dof in range(dofs):
+                s.setVal(dof, 0.0)
+            self.dynComp.setJointPos(s)
+
         layout = self.layout
         scene = context.scene
         parts = scene.my_list
@@ -567,7 +619,7 @@ class OBJECT_PT_robot_controller(Panel):
                 else:
                     row_disconnect.enabled = False
                     row_connect.enabled = True
-                    
+
 
 
 class OT_OpenConfigurationFile(Operator, ImportHelper):
