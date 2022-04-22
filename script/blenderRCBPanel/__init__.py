@@ -72,7 +72,6 @@ def register():
     except:
         print("A problem in the registration occurred")
 
-
     # initialize the dict
     bpy.types.Scene.rcb_wrapper = {}
 

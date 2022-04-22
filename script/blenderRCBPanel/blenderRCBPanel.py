@@ -30,6 +30,12 @@ from bpy.types import (Panel,
                        UIList
                        )
 
+# global variables
+inverseKinematics = iDynTree.InverseKinematics()
+dynComp = iDynTree.KinDynComputations()
+
+
+
 # ------------------------------------------------------------------------
 #    Structures
 # ------------------------------------------------------------------------
@@ -44,8 +50,6 @@ class rcb_wrapper():
         self.encs = encs
         self.iax = iax
         self.joint_limits = joint_limits
-
-
 
 
 # ------------------------------------------------------------------------
@@ -65,7 +69,7 @@ def unregister_rcb(rcb_name):
 
 def move(dummy):
     threshold = 10.0 # degrees
-    scene   = bpy.types.Scene
+    scene = bpy.types.Scene
     mytool = bpy.context.scene.my_tool
     for key in scene.rcb_wrapper:
         rcb_instance = scene.rcb_wrapper[key]
@@ -141,6 +145,7 @@ def float_callback(self, context):
     except AttributeError:
         pass
 
+
 class AllJoints:
 
     def __init__(self):
@@ -157,7 +162,7 @@ class AllJoints:
             # Our bones rotate around y (revolute joint), translate along y (prismatic joint), if both are locked, it
             # means it is a fixed joint.
             if joint.lock_rotation[1] and joint.lock_location[1]:
-                continue;
+                continue
 
             joint_min = -360
             joint_max =  360
@@ -172,12 +177,12 @@ class AllJoints:
                 joint_max = rot_constraint.max_y * 180 / math.pi
 
             self.annotations[joint_name] = FloatProperty(
-                name = joint_name,
-                description = joint_name,
-                default = 0,
-                min = joint_min,
-                max = joint_max,
-                update = float_callback,
+                name=joint_name,
+                description=joint_name,
+                default=0,
+                min=joint_min,
+                max=joint_max,
+                update=float_callback,
             )
 
 
@@ -304,6 +309,7 @@ class ListItem(PropertyGroup):
         default = False
     )
 
+
 class MY_UL_List(UIList):
 
     def draw_item(self, context, layout, data, item, icon, active_data,
@@ -318,6 +324,7 @@ class MY_UL_List(UIList):
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
             layout.label(text=item.viewValue, icon = custom_icon)
+
 
 class WM_OT_Disconnect(bpy.types.Operator):
     bl_label = "Disconnect"
@@ -338,6 +345,7 @@ class WM_OT_Disconnect(bpy.types.Operator):
         setattr(parts[scene.list_index], "isConnected", False)
 
         return {'FINISHED'}
+
 
 class WM_OT_Connect(bpy.types.Operator):
     bl_label = "Connect"
@@ -403,6 +411,7 @@ class WM_OT_Connect(bpy.types.Operator):
 
         return {'FINISHED'}
 
+
 class WM_OT_Configure(bpy.types.Operator):
     bl_label = "Configure"
     bl_idname = "wm.configure"
@@ -447,11 +456,14 @@ class WM_OT_ReachTarget(bpy.types.Operator):
 
     def execute(self, context):
         scene = bpy.context.scene
-        mytool = scene.my_tool
-        print(mytool)
-        ik = mytool.inverseKinematics
 
-        # TODO remove hardcoding
+        #bpy.ops.object.wm_ot_reachTarget
+        mytool = scene.my_tool
+
+        global inverseKinematics, dynComp
+        ik = inverseKinematics
+
+        # TODO remove hard-coding
         base_frame = "base_link"
         endeffector_frame = "r_hand"
         # TODO maybe this can be done once ?
@@ -460,23 +472,37 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         # As in this example we are considering instead the fixed-base case, we impose that the desired position of the base
         # is the identity
         world_H_base = iDynTree.Transform.Identity()
-        ok = mytool.inverseKinematics.setFloatingBaseOnFrameNamed(base_frame)
+
+        # TODO: The following line generates:
+        #  [ERROR] Model :: getLinkIndex : Impossible to find link base_link in the Model
+        #  [ERROR] Model :: computeFullTreeTraversal : requested traversalBase is out of bounds
+        ok = inverseKinematics.setFloatingBaseOnFrameNamed(base_frame)
+
         ik.addFrameConstraint(base_frame, world_H_base)
 
-        #base_H_ee_initial = self.mytool.dynComp.getRelativeTransform(base_frame, endeffector_frame);
+        # base_H_ee_initial = dynComp.getRelativeTransform(base_frame, endeffector_frame);
 
         # Define the transform of the selected cartesian target
-        base_H_ee_desired = iDynTree.Transform(iDynTree.Rotation.RPY(mytool.my_reach_roll*math.pi/180, mytool.my_reach_pitch*math.pi/180, mytool.my_reach_yaw*math.pi/180),
-                                               iDynTree.Position(mytool.my_reach_x, mytool.my_reach_y, mytool.my_reach_z))
-
-        # We want tha the end effector reaches the target
+        base_H_ee_desired = iDynTree.Transform(iDynTree.Rotation.RPY(mytool.my_reach_roll*math.pi/180,
+                                                                     mytool.my_reach_pitch*math.pi/180,
+                                                                     mytool.my_reach_yaw*math.pi/180),
+                                               iDynTree.Position(mytool.my_reach_x,
+                                                                 mytool.my_reach_y,
+                                                                 mytool.my_reach_z))
+        # We want that the end effector reaches the target
         ok = ik.addTarget(endeffector_frame, base_H_ee_desired)
         if not ok :
             print("Impossible to add target on  ", endeffector_frame)
             return {'CANCELLED'}
         #not sure if we need it
         #ik.setFullJointsInitialCondition(&world_H_base, &(jointPosInitialInRadians));
+        # TODO: The following line generated the WARNING:
+        #  [WARNING] InverseKinematics: joint l_elbow (index 20)
+        #           initial condition is outside the limits 0.261799 1.85005. Actual value: 0
+        #  [WARNING] InverseKinematics: joint r_elbow (index 28)
+        #           initial condition is outside the limits 0.261799 1.85005. Actual value: 0
         ok = ik.solve()
+
         if not ok:
             print("Impossible to solve inverse kinematics problem.")
             return {'CANCELLED'}
@@ -506,43 +532,43 @@ class OBJECT_PT_robot_controller(Panel):
     bl_region_type = "UI"
     bl_category = "Tools"
     bl_context = "posemode"
-    joint_name = []
+    # joint_name = []
 
     def __init__(self):
-        print("INIT PANELLLLLLLLL")
         self.iDynTreeModel = None
-        self.inverseKinematics = iDynTree.InverseKinematics()
-        self.dynComp = iDynTree.KinDynComputations()
 
     # @classmethod
     # def poll(cls, context):
     #     return context.object is not None
 
-    @staticmethod
-    def set_joint_names(joint_names):
-        OBJECT_PT_robot_controller.joint_names = joint_names
+    # @staticmethod
+    # def set_joint_names(joint_names):
+    #     OBJECT_PT_robot_controller.joint_names = joint_names
 
     def draw(self, context):
         # Initialize just once all the iDynTree structure for the IK
+
         if self.iDynTreeModel is None:
             model_urdf = bpy.context.scene['model_urdf']
             mdlLoader = iDynTree.ModelLoader()
             mdlLoader.loadModelFromString(model_urdf)
-            self.iDynTreeModel=mdlLoader.model()
-            print("This is the Model!", self.iDynTreeModel)
-            self.inverseKinematics.setModel(self.iDynTreeModel)
-            # Setup the ik problem
-            self.inverseKinematics.setCostTolerance(0.0001)
-            self.inverseKinematics.setConstraintsTolerance(0.00001)
-            self.inverseKinematics.setDefaultTargetResolutionMode(iDynTree.InverseKinematicsTreatTargetAsConstraintNone)
-            self.inverseKinematics.setRotationParametrization(iDynTree.InverseKinematicsRotationParametrizationRollPitchYaw)
+            self.iDynTreeModel = mdlLoader.model()
+            # print("This is the Model!", self.iDynTreeModel)
 
-            self.dynComp.loadRobotModel(self.iDynTreeModel)
-            dofs = self.dynComp.model().getNrOfDOFs()
+            global inverseKinematics, dynComp
+            inverseKinematics.setModel(self.iDynTreeModel)
+            # Setup the ik problem
+            inverseKinematics.setCostTolerance(0.0001)
+            inverseKinematics.setConstraintsTolerance(0.00001)
+            inverseKinematics.setDefaultTargetResolutionMode(iDynTree.InverseKinematicsTreatTargetAsConstraintNone)
+            inverseKinematics.setRotationParametrization(iDynTree.InverseKinematicsRotationParametrizationRollPitchYaw)
+
+            dynComp.loadRobotModel(self.iDynTreeModel)
+            dofs = dynComp.model().getNrOfDOFs()
             s = iDynTree.VectorDynSize(dofs)
             for dof in range(dofs):
                 s.setVal(dof, 0.0)
-            self.dynComp.setJointPos(s)
+            dynComp.setJointPos(s)
 
         layout = self.layout
         scene = context.scene
@@ -619,7 +645,6 @@ class OBJECT_PT_robot_controller(Panel):
                 else:
                     row_disconnect.enabled = False
                     row_connect.enabled = True
-
 
 
 class OT_OpenConfigurationFile(Operator, ImportHelper):
