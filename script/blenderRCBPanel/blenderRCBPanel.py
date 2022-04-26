@@ -33,6 +33,7 @@ from bpy.types import (Panel,
 # global variables
 inverseKinematics = iDynTree.InverseKinematics()
 dynComp = iDynTree.KinDynComputations()
+iDynTreeModel = None
 
 
 
@@ -464,7 +465,7 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         ik = inverseKinematics
 
         # TODO remove hard-coding
-        base_frame = "base_link"
+        base_frame = "root_link"
         endeffector_frame = "r_hand"
         # TODO maybe this can be done once ?
         # Note: the InverseKinematics class actually implements a floating base inverse kinematics,
@@ -473,9 +474,6 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         # is the identity
         world_H_base = iDynTree.Transform.Identity()
 
-        # TODO: The following line generates:
-        #  [ERROR] Model :: getLinkIndex : Impossible to find link base_link in the Model
-        #  [ERROR] Model :: computeFullTreeTraversal : requested traversalBase is out of bounds
         ok = inverseKinematics.setFloatingBaseOnFrameNamed(base_frame)
 
         ik.addFrameConstraint(base_frame, world_H_base)
@@ -508,15 +506,40 @@ class WM_OT_ReachTarget(bpy.types.Operator):
             return {'CANCELLED'}
 
         base_transform = iDynTree.Transform.Identity()
-        joint_positions = iDynTree.VectorDynSize(ik.fullModel().getNrOfJoints())
+        joint_positions = iDynTree.VectorDynSize(ik.reducedModel().getNrOfJoints())
+
+        print(f"joint_position_size before: {joint_positions.size()}")
 
         # Get the solution
-        ik.getFullJointsSolution(base_transform, joint_positions)
+        # ik.getFullJointsSolution(base_transform, joint_positions)
+
+        ik.setDesiredFullJointsConfiguration(joint_positions)
 
         # Convert to numpy objects
-        joint_positions = joint_positions.toNumPy()
+        # joint_positions = joint_positions.toNumPy()
 
-        print("Here is the solution!", joint_positions)
+        dynComp.loadRobotModel(ik.reducedModel())
+
+        dynComp.getJointPos(joint_positions)
+        print(f"joint_position_size after: {joint_positions.size()}")
+
+        pose_bones = bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones
+        for idyn_joint_idx in range(ik.reducedModel().getNrOfJoints()):
+
+            print(f"idyn_joint_idx: {idyn_joint_idx} and allnum {ik.reducedModel().getNrOfJoints()}")
+
+            # It is a prismatic joint (to be tested)
+            joint_name = ik.reducedModel().getJointName(idyn_joint_idx)
+
+            joint = pose_bones[joint_name]
+            joint_value = joint_positions[idyn_joint_idx]
+
+            if joint.lock_rotation[1]:
+                joint.delta_location[1] = joint_value
+            # It is a revolute joint
+            else:
+                joint.rotation_euler[1] = joint_value
+                joint.keyframe_insert(data_path="rotation_euler")
 
         return {'FINISHED'}
 
@@ -546,29 +569,10 @@ class OBJECT_PT_robot_controller(Panel):
     #     OBJECT_PT_robot_controller.joint_names = joint_names
 
     def draw(self, context):
-        # Initialize just once all the iDynTree structure for the IK
+        global iDynTreeModel
 
-        if self.iDynTreeModel is None:
-            model_urdf = bpy.context.scene['model_urdf']
-            mdlLoader = iDynTree.ModelLoader()
-            mdlLoader.loadModelFromString(model_urdf)
-            self.iDynTreeModel = mdlLoader.model()
-            # print("This is the Model!", self.iDynTreeModel)
-
-            global inverseKinematics, dynComp
-            inverseKinematics.setModel(self.iDynTreeModel)
-            # Setup the ik problem
-            inverseKinematics.setCostTolerance(0.0001)
-            inverseKinematics.setConstraintsTolerance(0.00001)
-            inverseKinematics.setDefaultTargetResolutionMode(iDynTree.InverseKinematicsTreatTargetAsConstraintNone)
-            inverseKinematics.setRotationParametrization(iDynTree.InverseKinematicsRotationParametrizationRollPitchYaw)
-
-            dynComp.loadRobotModel(self.iDynTreeModel)
-            dofs = dynComp.model().getNrOfDOFs()
-            s = iDynTree.VectorDynSize(dofs)
-            for dof in range(dofs):
-                s.setVal(dof, 0.0)
-            dynComp.setJointPos(s)
+        if iDynTreeModel is None:
+            configure_ik()
 
         layout = self.layout
         scene = context.scene
@@ -672,3 +676,27 @@ class OT_OpenConfigurationFile(Operator, ImportHelper):
         self.parse_conf(self.filepath, context)
         return {'FINISHED'}
 
+
+def configure_ik():
+
+    global iDynTreeModel, inverseKinematics, dynComp
+
+    model_urdf = bpy.context.scene['model_urdf']
+    mdlLoader = iDynTree.ModelLoader()
+    mdlLoader.loadModelFromString(model_urdf)
+    iDynTreeModel = mdlLoader.model()
+    print("This is the Model!", iDynTreeModel)
+
+    inverseKinematics.setModel(iDynTreeModel)
+    # Setup the ik problem
+    inverseKinematics.setCostTolerance(0.0001)
+    inverseKinematics.setConstraintsTolerance(0.00001)
+    inverseKinematics.setDefaultTargetResolutionMode(iDynTree.InverseKinematicsTreatTargetAsConstraintNone)
+    inverseKinematics.setRotationParametrization(iDynTree.InverseKinematicsRotationParametrizationRollPitchYaw)
+
+    dynComp.loadRobotModel(iDynTreeModel)
+    dofs = dynComp.model().getNrOfDOFs()
+    s = iDynTree.VectorDynSize(dofs)
+    for dof in range(dofs):
+        s.setVal(dof, 0.0)
+    dynComp.setJointPos(s)
