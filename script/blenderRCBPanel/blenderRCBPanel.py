@@ -4,6 +4,7 @@
 # This software may be modified and distributed under the terms of the
 # BSD-3-Clause license. See the accompanying LICENSE file for details.
 
+from ntpath import join
 import bpy
 import os
 # import sys
@@ -456,18 +457,52 @@ class WM_OT_ReachTarget(bpy.types.Operator):
     bl_description= "Reach the cartesian target"
 
     def execute(self, context):
+        global inverseKinematics, dynComp
         scene = bpy.context.scene
+        considered_joints = []
+        ik = inverseKinematics
+        model = ik.fullModel()
 
         #bpy.ops.object.wm_ot_reachTarget
         mytool = scene.my_tool
 
-        global inverseKinematics, dynComp
-        ik = inverseKinematics
-        joint_positions = iDynTree.VectorDynSize(ik.fullModel().getNrOfDOFs())
-
         # TODO remove hard-coding
         base_frame = "root_link"
         endeffector_frame = "r_hand"
+
+        #dhChain = iDynTree.DHChain()
+        #dhChain.fromModel(model, base_frame, endeffector_frame)
+
+        #for chain_idx in range(dhChain.getNrOfDOFs()):
+        #    considered_joints.append(dhChain.getDOFName(chain_idx))
+
+        traversal = iDynTree.Traversal()
+        ok_traversal = model.computeFullTreeTraversal(traversal)
+
+        if not ok_traversal:
+            print("Unable to get the traversal")
+            return {'CANCELLED'}
+
+        base_link_idx = model.getLinkIndex(base_frame)
+        endeffector_link_idx = model.getLinkIndex(endeffector_frame)
+        visitedLinkIdx = endeffector_link_idx
+        # create the list of considered joints, it is the list of the joints of
+        # the selected chain
+        while visitedLinkIdx != base_link_idx:
+            parentLinkIdx = traversal.getParentLinkFromLinkIndex(visitedLinkIdx).getIndex()
+            joint = traversal.getParentJointFromLinkIndex(visitedLinkIdx)
+            visitedLinkIdx = parentLinkIdx
+            if joint.getNrOfDOFs() == 0:
+                continue
+            considered_joints.append(model.getJointName(joint.getIndex()))
+
+
+        # Extract reduced model
+
+        ik.setModel(model, considered_joints)
+        dynComp.loadRobotModel(ik.reducedModel())
+        joint_positions = iDynTree.VectorDynSize(ik.reducedModel().getNrOfDOFs())
+
         # TODO maybe this can be done once ?
         # Note: the InverseKinematics class actually implements a floating base inverse kinematics,
         # meaning that both the joint position and the robot base are optimized to reach the desired cartesian position
@@ -497,8 +532,8 @@ class WM_OT_ReachTarget(bpy.types.Operator):
                 return {'CANCELLED'}
         # Initialize ik
         dynComp.getJointPos(joint_positions)
-        ik.setFullJointsInitialCondition(world_H_base, joint_positions)
-        ik.setDesiredFullJointsConfiguration(joint_positions)
+        ik.setReducedInitialCondition(world_H_base, joint_positions)
+        #ik.setDesiredReducedJointConfiguration(joint_positions)
 
         # TODO: The following line generated the WARNING:
         #  [WARNING] InverseKinematics: joint l_elbow (index 20)
@@ -514,7 +549,7 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         base_transform = iDynTree.Transform.Identity()
 
         # Get the solution
-        ik.getFullJointsSolution(base_transform, joint_positions)
+        ik.getReducedSolution(base_transform, joint_positions)
         dynComp.setJointPos(joint_positions)
 
         # Convert to numpy objects
@@ -525,7 +560,7 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         #dynComp.getJointPos(joint_positions)
 
         pose_bones = bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones
-        for idyn_joint_idx in range(ik.fullModel().getNrOfDOFs()):
+        for idyn_joint_idx in range(ik.reducedModel().getNrOfDOFs()):
 
             # It is a prismatic joint (to be tested)
             joint_name = ik.reducedModel().getJointName(idyn_joint_idx)
@@ -555,9 +590,6 @@ class OBJECT_PT_robot_controller(Panel):
     bl_category = "Tools"
     bl_context = "posemode"
     # joint_name = []
-
-    def __init__(self):
-        self.iDynTreeModel = None
 
     # @classmethod
     # def poll(cls, context):
@@ -678,13 +710,12 @@ class OT_OpenConfigurationFile(Operator, ImportHelper):
 
 def configure_ik():
 
-    global iDynTreeModel, inverseKinematics, dynComp
+    global iDynTreeModel,inverseKinematics, dynComp
 
     model_urdf = bpy.context.scene['model_urdf']
     mdlLoader = iDynTree.ModelLoader()
     mdlLoader.loadModelFromString(model_urdf)
     iDynTreeModel = mdlLoader.model()
-    print("This is the Model!", iDynTreeModel)
 
     inverseKinematics.setModel(iDynTreeModel)
     # Setup the ik problem
