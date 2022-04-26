@@ -463,6 +463,7 @@ class WM_OT_ReachTarget(bpy.types.Operator):
 
         global inverseKinematics, dynComp
         ik = inverseKinematics
+        joint_positions = iDynTree.VectorDynSize(ik.fullModel().getNrOfDOFs())
 
         # TODO remove hard-coding
         base_frame = "root_link"
@@ -490,10 +491,14 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         # We want that the end effector reaches the target
         ok = ik.addTarget(endeffector_frame, base_H_ee_desired)
         if not ok :
-            print("Impossible to add target on  ", endeffector_frame)
-            return {'CANCELLED'}
-        #not sure if we need it
-        #ik.setFullJointsInitialCondition(&world_H_base, &(jointPosInitialInRadians));
+            ok = ik.updateTarget(endeffector_frame, base_H_ee_desired)
+            if not ok :
+                print("Impossible to add target on ", endeffector_frame)
+                return {'CANCELLED'}
+        # Initialize ik
+        dynComp.getJointPos(joint_positions)
+        ik.setFullJointsInitialCondition(world_H_base, joint_positions)
+
         # TODO: The following line generated the WARNING:
         #  [WARNING] InverseKinematics: joint l_elbow (index 20)
         #           initial condition is outside the limits 0.261799 1.85005. Actual value: 0
@@ -506,27 +511,20 @@ class WM_OT_ReachTarget(bpy.types.Operator):
             return {'CANCELLED'}
 
         base_transform = iDynTree.Transform.Identity()
-        joint_positions = iDynTree.VectorDynSize(ik.reducedModel().getNrOfJoints())
-
-        print(f"joint_position_size before: {joint_positions.size()}")
 
         # Get the solution
-        # ik.getFullJointsSolution(base_transform, joint_positions)
-
-        ik.setDesiredFullJointsConfiguration(joint_positions)
+        ik.getFullJointsSolution(base_transform, joint_positions)
+        dynComp.setJointPos(joint_positions)
 
         # Convert to numpy objects
         # joint_positions = joint_positions.toNumPy()
 
-        dynComp.loadRobotModel(ik.reducedModel())
+        #dynComp.loadRobotModel(ik.fullModel())
 
-        dynComp.getJointPos(joint_positions)
-        print(f"joint_position_size after: {joint_positions.size()}")
+        #dynComp.getJointPos(joint_positions)
 
         pose_bones = bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones
-        for idyn_joint_idx in range(ik.reducedModel().getNrOfJoints()):
-
-            print(f"idyn_joint_idx: {idyn_joint_idx} and allnum {ik.reducedModel().getNrOfJoints()}")
+        for idyn_joint_idx in range(ik.fullModel().getNrOfDOFs()):
 
             # It is a prismatic joint (to be tested)
             joint_name = ik.reducedModel().getJointName(idyn_joint_idx)
