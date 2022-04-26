@@ -498,6 +498,7 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         # Initialize ik
         dynComp.getJointPos(joint_positions)
         ik.setFullJointsInitialCondition(world_H_base, joint_positions)
+        ik.setDesiredFullJointsConfiguration(joint_positions)
 
         # TODO: The following line generated the WARNING:
         #  [WARNING] InverseKinematics: joint l_elbow (index 20)
