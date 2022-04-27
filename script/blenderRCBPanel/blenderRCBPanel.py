@@ -294,6 +294,19 @@ class MyProperties(PropertyGroup):
         max=360.0
         )
 
+    my_baseframe: StringProperty(
+        name="Base frame name",
+        description="Choose the base frame:",
+        default="root_link",
+        maxlen=1024
+        )
+    my_endeffectorframe: StringProperty(
+        name="End-effector frame name",
+        description="Choose the end-effector frame:",
+        default="",
+        maxlen=1024
+        )
+
 
 class ListItem(PropertyGroup):
     value: StringProperty(
@@ -466,10 +479,11 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         #bpy.ops.object.wm_ot_reachTarget
         mytool = scene.my_tool
 
-        # TODO remove hard-coding
-        base_frame = "root_link"
-        endeffector_frame = "r_hand"
+        base_frame = mytool.my_baseframe
+        endeffector_frame = mytool.my_endeffectorframe
 
+        # TODO substitute the traversal part with this block after
+        # DHChain has been added to the bindings
         #dhChain = iDynTree.DHChain()
         #dhChain.fromModel(model, base_frame, endeffector_frame)
 
@@ -485,6 +499,9 @@ class WM_OT_ReachTarget(bpy.types.Operator):
 
         base_link_idx = model.getLinkIndex(base_frame)
         endeffector_link_idx = model.getLinkIndex(endeffector_frame)
+        if base_link_idx < 0 or endeffector_link_idx < 0:
+            return {'CANCELLED'}
+
         visitedLinkIdx = endeffector_link_idx
         # create the list of considered joints, it is the list of the joints of
         # the selected chain
@@ -630,18 +647,18 @@ class OBJECT_PT_robot_controller(Panel):
 
         reach_box = layout.box()
         reach_box.label(text="Reach target")
+        reach_box.row(align=True).prop(mytool, "my_baseframe")
+        reach_box.row(align=True).prop(mytool, "my_endeffectorframe")
 
-        reach_box.label(text="xyz")
-        row_reach_xyz = reach_box.row(align=True)
-        row_reach_xyz.prop(mytool, "my_reach_x")
-        row_reach_xyz.prop(mytool, "my_reach_y")
-        row_reach_xyz.prop(mytool, "my_reach_z")
+        reach_box.label(text="Position")
+        reach_box.row(align=True).prop(mytool, "my_reach_x")
+        reach_box.row(align=True).prop(mytool, "my_reach_y")
+        reach_box.row(align=True).prop(mytool, "my_reach_z")
 
-        reach_box.label(text="pitch yaw roll")
-        row_reach_rpy = reach_box.row(align=True)
-        row_reach_rpy.prop(mytool, "my_reach_pitch")
-        row_reach_rpy.prop(mytool, "my_reach_yaw")
-        row_reach_rpy.prop(mytool, "my_reach_roll")
+        reach_box.label(text="Rotation")
+        reach_box.row(align=True).prop(mytool, "my_reach_roll")
+        reach_box.row(align=True).prop(mytool, "my_reach_pitch")
+        reach_box.row(align=True).prop(mytool, "my_reach_yaw")
         reach_box.operator("wm.reach_target")
 
         layout.separator()
