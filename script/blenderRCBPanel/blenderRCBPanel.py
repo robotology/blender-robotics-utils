@@ -36,6 +36,8 @@ inverseKinematics = iDynTree.InverseKinematics()
 dynComp = iDynTree.KinDynComputations()
 iDynTreeModel = None
 
+list_of_links = []
+
 
 
 # ------------------------------------------------------------------------
@@ -192,6 +194,9 @@ class AllJoints:
 #    Scene Properties
 # ------------------------------------------------------------------------
 
+def getLinks(self, context):
+    return list_of_links
+
 class MyProperties(PropertyGroup):
 
     my_bool: BoolProperty(
@@ -294,18 +299,17 @@ class MyProperties(PropertyGroup):
         max=360.0
         )
 
-    my_baseframe: StringProperty(
-        name="Base frame name",
-        description="Choose the base frame:",
-        default="root_link",
-        maxlen=1024
+    my_baseframeenum: EnumProperty(
+        name="Base frame name:",
+        description="Select the base frame:",
+        items=getLinks
         )
-    my_endeffectorframe: StringProperty(
-        name="End-effector frame name",
-        description="Choose the end-effector frame:",
-        default="",
-        maxlen=1024
+    my_eeframeenum: EnumProperty(
+        name="End-effector frame name:",
+        description="Select the end-effector frame:",
+        items=getLinks
         )
+
 
 
 class ListItem(PropertyGroup):
@@ -479,8 +483,8 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         #bpy.ops.object.wm_ot_reachTarget
         mytool = scene.my_tool
 
-        base_frame = mytool.my_baseframe
-        endeffector_frame = mytool.my_endeffectorframe
+        base_frame = mytool.my_baseframeenum
+        endeffector_frame = mytool.my_eeframeenum
 
         # TODO substitute the traversal part with this block after
         # DHChain has been added to the bindings
@@ -640,8 +644,8 @@ class OBJECT_PT_robot_controller(Panel):
 
         reach_box = layout.box()
         reach_box.label(text="Reach target")
-        reach_box.row(align=True).prop(mytool, "my_baseframe")
-        reach_box.row(align=True).prop(mytool, "my_endeffectorframe")
+        reach_box.row(align=True).prop(mytool, "my_baseframeenum")
+        reach_box.row(align=True).prop(mytool, "my_eeframeenum")
 
         reach_box.label(text="Position")
         reach_box.row(align=True).prop(mytool, "my_reach_x")
@@ -729,6 +733,12 @@ def configure_ik():
     mdlLoader = iDynTree.ModelLoader()
     mdlLoader.loadModelFromString(model_urdf)
     iDynTreeModel = mdlLoader.model()
+
+    for link_idx in range(iDynTreeModel.getNrOfLinks()):
+        list_of_links.append((iDynTreeModel.getLinkName(link_idx),
+                              iDynTreeModel.getLinkName(link_idx),
+                              ""))
+
 
     inverseKinematics.setModel(iDynTreeModel)
     # Setup the ik problem
