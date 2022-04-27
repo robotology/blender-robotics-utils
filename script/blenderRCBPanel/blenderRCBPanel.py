@@ -569,13 +569,6 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         ik.getReducedSolution(base_transform, joint_positions)
         dynComp.setJointPos(joint_positions)
 
-        # Convert to numpy objects
-        # joint_positions = joint_positions.toNumPy()
-
-        #dynComp.loadRobotModel(ik.fullModel())
-
-        #dynComp.getJointPos(joint_positions)
-
         pose_bones = bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones
         for idyn_joint_idx in range(ik.reducedModel().getNrOfDOFs()):
 
@@ -682,6 +675,7 @@ class OBJECT_PT_robot_controller(Panel):
             box.enabled = False
             box_configure.enabled = True
             box_joints.enabled = False
+            reach_box.enabled = False
         else:
             box.enabled = True
             box_configure.enabled = False
@@ -689,8 +683,10 @@ class OBJECT_PT_robot_controller(Panel):
                 row_disconnect.enabled = False
                 row_connect.enabled = False
                 box_joints.enabled = False
+                reach_box.enabled = False
             else:
                 box_joints.enabled = True
+                reach_box.enabled = True
                 if getattr(parts[scene.list_index], "value") in rcb_wrapper.keys():
                     row_disconnect.enabled = True
                     row_connect.enabled = False
