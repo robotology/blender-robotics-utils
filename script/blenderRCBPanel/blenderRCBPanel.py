@@ -38,7 +38,8 @@ iDynTreeModel = None
 
 list_of_links = []
 
-
+def printError(self, *args):
+    self.report({"ERROR"}, " ".join(args))
 
 # ------------------------------------------------------------------------
 #    Structures
@@ -378,7 +379,7 @@ class WM_OT_Connect(bpy.types.Operator):
 
         yarp.Network.init()
         if not yarp.Network.checkNetwork():
-            print ('YARP server is not running!')
+            printError(self, "YARP server is not running!")
             return {'CANCELLED'}
 
         options = yarp.Property()
@@ -395,7 +396,7 @@ class WM_OT_Connect(bpy.types.Operator):
         driver.open(options)
 
         if not driver.isValid():
-            print ('Cannot open the driver!')
+            printError(self, "Cannot open the driver!")
             return {'CANCELLED'}
 
         # opening the drivers
@@ -407,7 +408,7 @@ class WM_OT_Connect(bpy.types.Operator):
         iax = driver.viewIAxisInfo()
         ilim = driver.viewIControlLimits()
         if ienc is None or ipos is None or icm is None or iposDir is None or iax is None or ilim is None:
-            print ('Cannot view one of the interfaces!')
+            printError(self,"Cannot view one of the interfaces!")
             return {'CANCELLED'}
 
         encs = yarp.Vector(ipos.getAxes())
@@ -446,7 +447,7 @@ class WM_OT_Configure(bpy.types.Operator):
             # init the callback
             bpy.app.handlers.frame_change_post.append(move)
         except:
-            print("a problem when initialising the callback")
+            printError(self,"A problem when initialising the callback")
 
         robot = AllJoints()
 
@@ -486,6 +487,10 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         base_frame = mytool.my_baseframeenum
         endeffector_frame = mytool.my_eeframeenum
 
+        if base_frame == endeffector_frame:
+            printError(self, "Base frame and end-effector frame are coincident!")
+            return {'CANCELLED'}
+
         # TODO substitute the traversal part with this block after
         # DHChain has been added to the bindings
         #dhChain = iDynTree.DHChain()
@@ -498,7 +503,7 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         ok_traversal = model.computeFullTreeTraversal(traversal)
 
         if not ok_traversal:
-            print("Unable to get the traversal")
+            printError(self,"Unable to get the traversal")
             return {'CANCELLED'}
 
         base_link_idx = model.getLinkIndex(base_frame)
@@ -510,7 +515,11 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         # create the list of considered joints, it is the list of the joints of
         # the selected chain
         while visitedLinkIdx != base_link_idx:
-            parentLinkIdx = traversal.getParentLinkFromLinkIndex(visitedLinkIdx).getIndex()
+            parentLink = traversal.getParentLinkFromLinkIndex(visitedLinkIdx)
+            if parentLink is None :
+                printError(self, "Unable to find a single chain that goes from", base_frame, "to", endeffector_frame)
+                return {'CANCELLED'}
+            parentLinkIdx = parentLink.getIndex()
             joint = traversal.getParentJointFromLinkIndex(visitedLinkIdx)
             visitedLinkIdx = parentLinkIdx
             if joint.getNrOfDOFs() == 0:
@@ -549,7 +558,7 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         if not ok :
             ok = ik.updateTarget(endeffector_frame, base_H_ee_desired)
             if not ok :
-                print("Impossible to add target on ", endeffector_frame)
+                printError(self,"Impossible to add target on ", endeffector_frame)
                 return {'CANCELLED'}
         # Initialize ik
         dynComp.getJointPos(joint_positions)
@@ -564,7 +573,7 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         ok = ik.solve()
 
         if not ok:
-            print("Impossible to solve inverse kinematics problem.")
+            printError(self,"Impossible to solve inverse kinematics problem.")
             return {'CANCELLED'}
 
         base_transform = iDynTree.Transform.Identity()
