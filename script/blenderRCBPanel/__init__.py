@@ -33,6 +33,7 @@ from .blenderRCBPanel import (MyProperties,
                               WM_OT_Disconnect,
                               WM_OT_Connect,
                               WM_OT_Configure,
+                              WM_OT_ReachTarget,
                               OBJECT_PT_robot_controller,
                               OT_OpenConfigurationFile,
                               ListItem,
@@ -48,6 +49,7 @@ classes = (
     WM_OT_Disconnect,
     WM_OT_Connect,
     WM_OT_Configure,
+    WM_OT_ReachTarget,
     OBJECT_PT_robot_controller,
     OT_OpenConfigurationFile,
     ListItem,
@@ -69,7 +71,6 @@ def register():
                                                  default=0)
     except:
         print("A problem in the registration occurred")
-
 
     # initialize the dict
     bpy.types.Scene.rcb_wrapper = {}
