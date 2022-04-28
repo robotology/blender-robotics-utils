@@ -533,12 +533,9 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         dynComp.loadRobotModel(ik.reducedModel())
         joint_positions = iDynTree.VectorDynSize(ik.reducedModel().getNrOfDOFs())
 
-        # TODO maybe this can be done once ?
         # Note: the InverseKinematics class actually implements a floating base inverse kinematics,
         # meaning that both the joint position and the robot base are optimized to reach the desired cartesian position
-        # As in this example we are considering instead the fixed-base case, we impose that the desired position of the base
-        # is the identity
-        world_H_base = iDynTree.Transform.Identity()
+        world_H_base = dynComp.getWorldTransform(base_frame)
 
         ok = inverseKinematics.setFloatingBaseOnFrameNamed(base_frame)
 
