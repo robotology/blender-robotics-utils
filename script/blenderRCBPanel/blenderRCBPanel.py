@@ -17,9 +17,6 @@ from .common_functions import (printError,
                                IkVariables as ikv,
                                InverseKinematics,
                                )
-                               #inverseKinematics,
-                               #dynComp,
-                               #iDynTreeModel)
 
 from bpy_extras.io_utils import ImportHelper
 from bpy_extras import view3d_utils
@@ -39,13 +36,6 @@ from bpy.types import (Panel,
                        PropertyGroup,
                        UIList
                        )
-
-# global variables
-# inverseKinematics = iDynTree.InverseKinematics()
-# dynComp = iDynTree.KinDynComputations()
-# iDynTreeModel = None
-
-mouse_loc = [0, 0, 0]
 
 list_of_links = []
 
@@ -489,70 +479,71 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         # bpy.ops.object.modal_operator('INVOKE_DEFAULT')
         return InverseKinematics.execute(self)
 
-#
-# class ModalOperator(bpy.types.Operator):
-#     bl_idname = "object.modal_operator"
-#     bl_label = "Simple Modal Operator"
 
-#     def __init__(self):
-#         self.mouse_pos = [0.0, 0.0]
-#         self.object = None
-#         print("Start")
-#
-#     def __del__(self):
-#         print("End")
-#
-#     def execute(self, context):
-#         print("location: ", mouse_loc[0], mouse_loc[1], mouse_loc[2])
-#         return {'FINISHED'}
-#
-#     def modal(self, context, event):
-#         if event.type == 'L':  # Apply
-#             print("getting the locations")
-#             global mouse_loc
-#             self.mouse_pos = [event.mouse_region_x, event.mouse_region_y]
-#
-#             self.object = bpy.context.object
-#             region = bpy.context.region
-#             region3D = bpy.context.space_data.region_3d
-#             #The direction indicated by the mouse position from the current view
-#             view_vector = view3d_utils.region_2d_to_vector_3d(region, region3D, self.mouse_pos)
-#             #The 3D location in this direction
-#             mouse_loc = view3d_utils.region_2d_to_location_3d(region, region3D, self.mouse_pos, view_vector)
-#             #The 3D location converted in object local coordinates
-#             # mouse_loc = self.object.matrix_world.inverted() * mouse_loc
-#
-#             self.execute(context)
-#
-#         elif event.type == 'O':
-#             print("O pressed")
-#             return {'FINISHED'}
-#         elif event.type in {'P'}:  # Cancel
-#             print("P pressed")
-#             return {'CANCELLED'}
-#
-#         return {'RUNNING_MODAL'}
-#
-#     def invoke(self, context, event):
-#         if context.area.type == 'VIEW_3D':
-#             print("Operator invoked")
-#             args = (self, context)
-#             # self._handle = bpy.types.SpaceView3D.draw_handler_add(draw_callback_px, args, 'WINDOW', 'POST_PIXEL')
-#
-#             # Keeps mouse position current 3D location and current object for the draw callback
-#             # (not needed to make self attribute if you don't want to use the callback)
-#             self.mouse_pos = [0, 0]
-#
-#             global mouse_loc
-#             mouse_loc = [0, 0, 0]
-#
-#             self.object = context.object
-#
-#             context.window_manager.modal_handler_add(self)
-#             return {'RUNNING_MODAL'}
-#         else:
-#             self.report({'WARNING'}, "View3D not found, cannot run operator")
-#             return {'CANCELLED'}
+class ModalOperator(bpy.types.Operator):
+    bl_idname = "object.modal_operator"
+    bl_label = "Simple Modal Operator"
+
+    def __init__(self):
+        self.mouse_pos = [0.0, 0.0]
+        self.object = None
+        self.loc_3d = [0.0, 0.0, 0.0]
+        print("Start")
+
+    def __del__(self):
+        print("End")
+
+    def execute(self, context):
+        print("location: ", self.loc_3d[0], self.loc_3d[1], self.loc_3d[2])
+        return {'FINISHED'}
+
+    def modal(self, context, event):
+        if event.type == 'L':  # Apply
+            print("getting the locations")
+            self.loc_3d = [event.mouse_region_x, event.mouse_region_y]
+
+            self.object = bpy.context.object
+            region = bpy.context.region
+            region3D = bpy.context.space_data.region_3d
+            #The direction indicated by the mouse position from the current view
+            view_vector = view3d_utils.region_2d_to_vector_3d(region, region3D, self.loc_3d)
+            #The 3D location in this direction
+            self.loc_3d = view3d_utils.region_2d_to_location_3d(region, region3D, self.loc_3d, view_vector)
+            #The 3D location converted in object local coordinates
+            # self.loc_3d = self.object.matrix_world.inverted() * mouse_loc
+
+            InverseKinematics.execute(self, self.loc_3d)
+
+            self.execute(context)
+
+        elif event.type == 'O':
+            print("O pressed")
+            return {'FINISHED'}
+        elif event.type in {'P'}:  # Cancel
+            print("P pressed")
+            return {'CANCELLED'}
+
+        return {'RUNNING_MODAL'}
+
+    def invoke(self, context, event):
+        if context.area.type == 'VIEW_3D':
+            print("Operator invoked")
+            args = (self, context)
+            # self._handle = bpy.types.SpaceView3D.draw_handler_add(draw_callback_px, args, 'WINDOW', 'POST_PIXEL')
+
+            # Keeps mouse position current 3D location and current object for the draw callback
+            # (not needed to make self attribute if you don't want to use the callback)
+            self.loc_3d = [0, 0]
+
+            self.loc_3d = [0, 0, 0]
+
+            self.object = context.object
+
+            context.window_manager.modal_handler_add(self)
+            return {'RUNNING_MODAL'}
+        else:
+            self.report({'WARNING'}, "View3D not found, cannot run operator")
+            return {'CANCELLED'}
 
 # ------------------------------------------------------------------------
 #    Panel in Object Mode
@@ -684,7 +675,7 @@ class OT_OpenConfigurationFile(Operator, ImportHelper):
     def execute(self, context):
         filename, extension = os.path.splitext(self.filepath)
         self.parse_conf(self.filepath, context)
-        #bpy.ops.object.modal_operator('INVOKE_DEFAULT')
+        bpy.ops.object.modal_operator('INVOKE_DEFAULT')
         return {'FINISHED'}
 
 

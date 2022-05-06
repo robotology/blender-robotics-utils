@@ -19,7 +19,7 @@ class InverseKinematics:
         pass
 
     @staticmethod
-    def execute(object):
+    def execute(object, xyz=[], rpy=[]):
         #global inverseKinematics, dynComp
         scene = bpy.context.scene
         considered_joints = []
@@ -30,7 +30,7 @@ class InverseKinematics:
         mytool = scene.my_tool
 
         base_frame = mytool.my_baseframeenum
-        endeffector_frame = mytool.my_eeframeenum
+        endeffector_frame = 'r_hand'  #mytool.my_eeframeenum
 
         if base_frame == endeffector_frame:
             printError(object, "Base frame and end-effector frame are coincident!")
@@ -87,13 +87,19 @@ class InverseKinematics:
 
         # base_H_ee_initial = IkVariables.dynComp.getRelativeTransform(base_frame, endeffector_frame);
 
-        iDynTreeRotation = iDynTree.Rotation.RPY(mytool.my_reach_roll * math.pi / 180,
-                                                 mytool.my_reach_pitch * math.pi / 180,
-                                                 mytool.my_reach_yaw * math.pi / 180)
+        if not rpy:
+            iDynTreeRotation = iDynTree.Rotation.RPY(mytool.my_reach_roll * math.pi / 180,
+                                                     mytool.my_reach_pitch * math.pi / 180,
+                                                     mytool.my_reach_yaw * math.pi / 180)
+        else:
+            iDynTreeRotation = iDynTree.Rotation.RPY(rpy[0] * math.pi / 180,
+                                                     rpy[1] * math.pi / 180,
+                                                     rpy[2] * math.pi / 180)
 
-        iDynTreePosition = iDynTree.Position(mytool.my_reach_x, mytool.my_reach_y, mytool.my_reach_z)
-        # global mouse_loc
-        # iDynTreePosition = iDynTree.Position(mouse_loc[0], mouse_loc[1], mouse_loc[2])
+        if not xyz:
+            iDynTreePosition = iDynTree.Position(mytool.my_reach_x, mytool.my_reach_y, mytool.my_reach_z)
+        else:
+            iDynTreePosition = iDynTree.Position(xyz[0], xyz[1], xyz[2])
 
         # Define the transform of the selected cartesian target
         base_H_ee_desired = iDynTree.Transform(iDynTreeRotation, iDynTreePosition)
