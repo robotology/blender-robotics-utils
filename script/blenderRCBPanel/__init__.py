@@ -34,6 +34,7 @@ from .blenderRCBPanel import (MyProperties,
                               WM_OT_Connect,
                               WM_OT_Configure,
                               WM_OT_ReachTarget,
+                              ModalOperator,
                               OBJECT_PT_robot_controller,
                               OT_OpenConfigurationFile,
                               ListItem,
@@ -50,6 +51,7 @@ classes = (
     WM_OT_Connect,
     WM_OT_Configure,
     WM_OT_ReachTarget,
+    ModalOperator,
     OBJECT_PT_robot_controller,
     OT_OpenConfigurationFile,
     ListItem,
@@ -67,8 +69,8 @@ def register():
     try:
         bpy.types.Scene.my_tool = PointerProperty(type=MyProperties)
         bpy.types.Scene.my_list = CollectionProperty(type=ListItem)
-        bpy.types.Scene.list_index = IntProperty(name="Index for my_list",
-                                                 default=0)
+        bpy.types.Scene.list_index = IntProperty(name="Index for my_list", default=0)
+
     except:
         print("A problem in the registration occurred")
 

@@ -14,6 +14,7 @@ import idyntree.bindings as iDynTree
 import math
 import json
 from bpy_extras.io_utils import ImportHelper
+from bpy_extras import view3d_utils
 
 from bpy.props import (StringProperty,
                        BoolProperty,
@@ -312,7 +313,6 @@ class MyProperties(PropertyGroup):
         )
 
 
-
 class ListItem(PropertyGroup):
     value: StringProperty(
            name="Name",
@@ -392,7 +392,7 @@ class WM_OT_Connect(bpy.types.Operator):
         options.put("remote", "/"+mytool.my_string+"/"+getattr(parts[scene.list_index], "value"))
 
         # opening the drivers
-        print ('Opening the motor driver...')
+        print('Opening the motor driver...')
         driver.open(options)
 
         if not driver.isValid():
@@ -400,7 +400,7 @@ class WM_OT_Connect(bpy.types.Operator):
             return {'CANCELLED'}
 
         # opening the drivers
-        print ('Viewing motor position/encoders...')
+        print('Viewing motor position/encoders...')
         icm = driver.viewIControlMode()
         iposDir = driver.viewIPositionDirect()
         ipos = driver.viewIPositionControl()
@@ -447,7 +447,7 @@ class WM_OT_Configure(bpy.types.Operator):
             # init the callback
             bpy.app.handlers.frame_change_post.append(move)
         except:
-            printError(self,"A problem when initialising the callback")
+            printError(self, "A problem when initialising the callback")
 
         robot = AllJoints()
 
@@ -598,6 +598,66 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class ModalOperator(bpy.types.Operator):
+    bl_idname = "object.modal_operator"
+    bl_label = "Simple Modal Operator"
+
+    def __init__(self):
+        self.mouse_pos = [0.0, 0.0]
+        self.mouse_x = 0.0
+        self.mouse_y = 0.0
+        self.loc = [0.0, 0.0, 0.0]
+        print("Start")
+
+    def __del__(self):
+        print("End")
+
+    def execute(self, context):
+        print("location: ", self.loc[0], self.loc[1], self.loc[2])
+        return {'FINISHED'}
+
+    def modal(self, context, event):
+        if event.type == 'MOUSEMOVE':  # Apply
+            self.mouse_pos = [event.mouse_region_x, event.mouse_region_y]
+
+            self.object = bpy.context.object
+            region = bpy.context.region
+            region3D = bpy.context.space_data.region_3d
+            #The direction indicated by the mouse position from the current view
+            view_vector = view3d_utils.region_2d_to_vector_3d(region, region3D, self.mouse_pos)
+            #The 3D location in this direction
+            self.loc = view3d_utils.region_2d_to_location_3d(region, region3D, self.mouse_pos, view_vector)
+            #The 3D location converted in object local coordinates
+            # self.loc = self.object.matrix_world.inverted() * self.loc
+
+            self.execute(context)
+
+        # elif event.type == 'LEFTMOUSE':  # Confirm
+        #     pass
+        #     # return {'FINISHED'}
+        # elif event.type in {'RIGHTMOUSE', 'ESC'}:  # Cancel
+        #     pass
+        #     # return {'CANCELLED'}
+
+        return {'RUNNING_MODAL'}
+
+    def invoke(self, context, event):
+        if context.area.type == 'VIEW_3D':
+            args = (self, context)
+            # self._handle = bpy.types.SpaceView3D.draw_handler_add(draw_callback_px, args, 'WINDOW', 'POST_PIXEL')
+
+            #Keeps mouse position current 3D location and current object for the draw callback
+            #(not needed to make it self attribute if you don't want to use the callback)
+            self.mouse_pos = [0, 0]
+            self.loc = [0, 0, 0]
+            self.object = None
+
+            context.window_manager.modal_handler_add(self)
+            return {'RUNNING_MODAL'}
+        else:
+            self.report({'WARNING'}, "View3D not found, cannot run operator")
+            return {'CANCELLED'}
+
 # ------------------------------------------------------------------------
 #    Panel in Object Mode
 # ------------------------------------------------------------------------
@@ -728,6 +788,7 @@ class OT_OpenConfigurationFile(Operator, ImportHelper):
     def execute(self, context):
         filename, extension = os.path.splitext(self.filepath)
         self.parse_conf(self.filepath, context)
+        bpy.ops.object.modal_operator('INVOKE_DEFAULT')
         return {'FINISHED'}
 
 
@@ -744,7 +805,6 @@ def configure_ik():
         list_of_links.append((iDynTreeModel.getLinkName(link_idx),
                               iDynTreeModel.getLinkName(link_idx),
                               ""))
-
 
     inverseKinematics.setModel(iDynTreeModel)
     # Setup the ik problem
