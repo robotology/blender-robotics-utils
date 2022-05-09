@@ -20,7 +20,6 @@ class InverseKinematics:
 
     @staticmethod
     def execute(object, xyz=[], rpy=[]):
-        #global inverseKinematics, dynComp
         scene = bpy.context.scene
         considered_joints = []
         ik = IkVariables.inverseKinematics
@@ -30,7 +29,7 @@ class InverseKinematics:
         mytool = scene.my_tool
 
         base_frame = mytool.my_baseframeenum
-        endeffector_frame = 'r_hand'  #mytool.my_eeframeenum
+        endeffector_frame = mytool.my_eeframeenum
 
         if base_frame == endeffector_frame:
             printError(object, "Base frame and end-effector frame are coincident!")

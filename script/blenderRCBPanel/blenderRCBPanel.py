@@ -475,23 +475,41 @@ class WM_OT_ReachTarget(bpy.types.Operator):
     bl_description = "Reach the cartesian target"
 
     def execute(self, context):
-        # invoke operator
-        # bpy.ops.object.modal_operator('INVOKE_DEFAULT')
         return InverseKinematics.execute(self)
 
 
+class ControlDragAndDropOperator(bpy.types.Operator):
+    """Process input while Control key is pressed"""
+    bl_idname = 'object.process_input'
+    bl_label = 'Process Input'
+    # bl_options = {'REGISTER'}
+
+    def modal(self, context, event):
+        if event.type == 'O':
+            # invoke the drag and drop operator.
+            bpy.ops.object.modal_operator('INVOKE_DEFAULT')
+            # return {'FINISHED'}
+            return {'RUNNING_MODAL'}
+        elif event.ctrl:
+            pass # Input processing code.
+
+        return {'PASS_THROUGH'}
+
+    def invoke(self, context, event):
+        context.window_manager.modal_handler_add(self)
+        return {'RUNNING_MODAL'}
+
 class ModalOperator(bpy.types.Operator):
     bl_idname = "object.modal_operator"
-    bl_label = "Simple Modal Operator"
+    bl_label = "Drap and Drop Operator"
 
     def __init__(self):
         self.mouse_pos = [0.0, 0.0]
         self.object = None
         self.loc_3d = [0.0, 0.0, 0.0]
-        print("Start")
 
     def __del__(self):
-        print("End")
+        print("End operator")
 
     def execute(self, context):
         print("location: ", self.loc_3d[0], self.loc_3d[1], self.loc_3d[2])
@@ -499,7 +517,6 @@ class ModalOperator(bpy.types.Operator):
 
     def modal(self, context, event):
         if event.type == 'L':  # Apply
-            print("getting the locations")
             self.loc_3d = [event.mouse_region_x, event.mouse_region_y]
 
             self.object = bpy.context.object
@@ -516,25 +533,20 @@ class ModalOperator(bpy.types.Operator):
 
             self.execute(context)
 
-        elif event.type == 'O':
-            print("O pressed")
-            return {'FINISHED'}
         elif event.type in {'P'}:  # Cancel
-            print("P pressed")
+            print("Quit pressed")
             return {'CANCELLED'}
 
         return {'RUNNING_MODAL'}
 
     def invoke(self, context, event):
         if context.area.type == 'VIEW_3D':
-            print("Operator invoked")
+            print("Drag and Drop operator invoked")
             args = (self, context)
             # self._handle = bpy.types.SpaceView3D.draw_handler_add(draw_callback_px, args, 'WINDOW', 'POST_PIXEL')
 
             # Keeps mouse position current 3D location and current object for the draw callback
             # (not needed to make self attribute if you don't want to use the callback)
-            self.loc_3d = [0, 0]
-
             self.loc_3d = [0, 0, 0]
 
             self.object = context.object
@@ -567,7 +579,6 @@ class OBJECT_PT_robot_controller(Panel):
     #     OBJECT_PT_robot_controller.joint_names = joint_names
 
     def draw(self, context):
-        #global iDynTreeModel
 
         if ikv.iDynTreeModel is None:
             configure_ik()
@@ -675,15 +686,11 @@ class OT_OpenConfigurationFile(Operator, ImportHelper):
     def execute(self, context):
         filename, extension = os.path.splitext(self.filepath)
         self.parse_conf(self.filepath, context)
-        bpy.ops.object.modal_operator('INVOKE_DEFAULT')
+        bpy.ops.object.process_input('INVOKE_DEFAULT')
         return {'FINISHED'}
 
 
 def configure_ik():
-
-    #global iDynTreeModel,inverseKinematics, dynComp
-
-    print("I AM HERE")
 
     model_urdf = bpy.context.scene['model_urdf']
     mdlLoader = iDynTree.ModelLoader()
