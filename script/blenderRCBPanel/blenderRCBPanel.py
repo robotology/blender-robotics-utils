@@ -478,32 +478,23 @@ class WM_OT_ReachTarget(bpy.types.Operator):
         return InverseKinematics.execute(self)
 
 
-class ControlDragAndDropOperator(bpy.types.Operator):
+class WM_OT_initiate_drag_drop(bpy.types.Operator):
     """Process input while Control key is pressed"""
-    bl_idname = 'object.process_input'
-    bl_label = 'Process Input'
+    bl_idname = 'wm.initiate_drag_drop'
+    bl_label = 'Drag & Drop'
     # bl_options = {'REGISTER'}
 
-    def modal(self, context, event):
-        if event.type == 'O':
-            # invoke the drag and drop operator.
-            bpy.ops.object.modal_operator('INVOKE_DEFAULT')
-            # return {'FINISHED'}
-            return {'RUNNING_MODAL'}
-        elif event.ctrl:
-            pass # Input processing code.
-
-        return {'PASS_THROUGH'}
-
-    def invoke(self, context, event):
-        context.window_manager.modal_handler_add(self)
-        return {'RUNNING_MODAL'}
+    def execute(self, context):
+        print("Going to invoke the modal operator")
+        bpy.ops.object.modal_operator('INVOKE_DEFAULT')
+        return {'FINISHED'}
 
 class ModalOperator(bpy.types.Operator):
     bl_idname = "object.modal_operator"
     bl_label = "Drap and Drop Operator"
 
     def __init__(self):
+        print("Invoked!!!")
         self.mouse_pos = [0.0, 0.0]
         self.object = None
         self.loc_3d = [0.0, 0.0, 0.0]
@@ -516,7 +507,7 @@ class ModalOperator(bpy.types.Operator):
         return {'FINISHED'}
 
     def modal(self, context, event):
-        if event.type == 'L':  # Apply
+        if event.type == 'LEFTMOUSE':  # Apply
             self.loc_3d = [event.mouse_region_x, event.mouse_region_y]
 
             self.object = bpy.context.object
@@ -533,7 +524,7 @@ class ModalOperator(bpy.types.Operator):
 
             self.execute(context)
 
-        elif event.type in {'P'}:  # Cancel
+        elif event.type == 'RIGHTMOUSE':  # Cancel
             print("Quit pressed")
             return {'CANCELLED'}
 
@@ -622,6 +613,8 @@ class OBJECT_PT_robot_controller(Panel):
         reach_box.row(align=True).prop(mytool, "my_reach_yaw")
         reach_box.operator("wm.reach_target")
 
+        reach_box.operator("wm.initiate_drag_drop")
+
         layout.separator()
 
         box_joints = layout.box()
@@ -686,7 +679,7 @@ class OT_OpenConfigurationFile(Operator, ImportHelper):
     def execute(self, context):
         filename, extension = os.path.splitext(self.filepath)
         self.parse_conf(self.filepath, context)
-        bpy.ops.object.process_input('INVOKE_DEFAULT')
+        # bpy.ops.object.process_input('INVOKE_DEFAULT')
         return {'FINISHED'}
 
 

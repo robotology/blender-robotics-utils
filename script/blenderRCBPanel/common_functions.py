@@ -98,7 +98,7 @@ class InverseKinematics:
         if not xyz:
             iDynTreePosition = iDynTree.Position(mytool.my_reach_x, mytool.my_reach_y, mytool.my_reach_z)
         else:
-            iDynTreePosition = iDynTree.Position(xyz[0], xyz[1], xyz[2])
+            iDynTreePosition = iDynTree.Position(-xyz[0], xyz[1], xyz[2])
 
         # Define the transform of the selected cartesian target
         base_H_ee_desired = iDynTree.Transform(iDynTreeRotation, iDynTreePosition)
