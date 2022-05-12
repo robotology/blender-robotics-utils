@@ -13,7 +13,13 @@ import idyntree.bindings as iDynTree
 # import numpy as np
 import math
 import json
+from .common_functions import (printError,
+                               IkVariables as ikv,
+                               InverseKinematics,
+                               )
+
 from bpy_extras.io_utils import ImportHelper
+from bpy_extras import view3d_utils
 
 from bpy.props import (StringProperty,
                        BoolProperty,
@@ -31,15 +37,10 @@ from bpy.types import (Panel,
                        UIList
                        )
 
-# global variables
-inverseKinematics = iDynTree.InverseKinematics()
-dynComp = iDynTree.KinDynComputations()
-iDynTreeModel = None
-
 list_of_links = []
 
-def printError(self, *args):
-    self.report({"ERROR"}, " ".join(args))
+# def printError(self, *args):
+#     self.report({"ERROR"}, " ".join(args))
 
 # ------------------------------------------------------------------------
 #    Structures
@@ -312,7 +313,6 @@ class MyProperties(PropertyGroup):
         )
 
 
-
 class ListItem(PropertyGroup):
     value: StringProperty(
            name="Name",
@@ -392,7 +392,7 @@ class WM_OT_Connect(bpy.types.Operator):
         options.put("remote", "/"+mytool.my_string+"/"+getattr(parts[scene.list_index], "value"))
 
         # opening the drivers
-        print ('Opening the motor driver...')
+        print('Opening the motor driver...')
         driver.open(options)
 
         if not driver.isValid():
@@ -400,7 +400,7 @@ class WM_OT_Connect(bpy.types.Operator):
             return {'CANCELLED'}
 
         # opening the drivers
-        print ('Viewing motor position/encoders...')
+        print('Viewing motor position/encoders...')
         icm = driver.viewIControlMode()
         iposDir = driver.viewIPositionDirect()
         ipos = driver.viewIPositionControl()
@@ -408,7 +408,7 @@ class WM_OT_Connect(bpy.types.Operator):
         iax = driver.viewIAxisInfo()
         ilim = driver.viewIControlLimits()
         if ienc is None or ipos is None or icm is None or iposDir is None or iax is None or ilim is None:
-            printError(self,"Cannot view one of the interfaces!")
+            printError(self, "Cannot view one of the interfaces!")
             return {'CANCELLED'}
 
         encs = yarp.Vector(ipos.getAxes())
@@ -447,7 +447,7 @@ class WM_OT_Configure(bpy.types.Operator):
             # init the callback
             bpy.app.handlers.frame_change_post.append(move)
         except:
-            printError(self,"A problem when initialising the callback")
+            printError(self, "A problem when initialising the callback")
 
         robot = AllJoints()
 
@@ -472,131 +472,81 @@ class WM_OT_ReachTarget(bpy.types.Operator):
     bl_label = "Reach Target"
     bl_idname = "wm.reach_target"
 
-    bl_description= "Reach the cartesian target"
+    bl_description = "Reach the cartesian target"
 
     def execute(self, context):
-        global inverseKinematics, dynComp
-        scene = bpy.context.scene
-        considered_joints = []
-        ik = inverseKinematics
-        model = ik.fullModel()
-
-        #bpy.ops.object.wm_ot_reachTarget
-        mytool = scene.my_tool
-
-        base_frame = mytool.my_baseframeenum
-        endeffector_frame = mytool.my_eeframeenum
-
-        if base_frame == endeffector_frame:
-            printError(self, "Base frame and end-effector frame are coincident!")
-            return {'CANCELLED'}
-
-        # TODO substitute the traversal part with this block after
-        # DHChain has been added to the bindings
-        #dhChain = iDynTree.DHChain()
-        #dhChain.fromModel(model, base_frame, endeffector_frame)
-
-        #for chain_idx in range(dhChain.getNrOfDOFs()):
-        #    considered_joints.append(dhChain.getDOFName(chain_idx))
-
-        traversal = iDynTree.Traversal()
-        ok_traversal = model.computeFullTreeTraversal(traversal)
-
-        if not ok_traversal:
-            printError(self,"Unable to get the traversal")
-            return {'CANCELLED'}
-
-        base_link_idx = model.getLinkIndex(base_frame)
-        endeffector_link_idx = model.getLinkIndex(endeffector_frame)
-        if base_link_idx < 0 or endeffector_link_idx < 0:
-            return {'CANCELLED'}
-
-        visitedLinkIdx = endeffector_link_idx
-        # create the list of considered joints, it is the list of the joints of
-        # the selected chain
-        while visitedLinkIdx != base_link_idx:
-            parentLink = traversal.getParentLinkFromLinkIndex(visitedLinkIdx)
-            if parentLink is None :
-                printError(self, "Unable to find a single chain that goes from", base_frame, "to", endeffector_frame)
-                return {'CANCELLED'}
-            parentLinkIdx = parentLink.getIndex()
-            joint = traversal.getParentJointFromLinkIndex(visitedLinkIdx)
-            visitedLinkIdx = parentLinkIdx
-            if joint.getNrOfDOFs() == 0:
-                continue
-            considered_joints.append(model.getJointName(joint.getIndex()))
+        return InverseKinematics.execute(self)
 
 
-        # Extract reduced model
+class WM_OT_initiate_drag_drop(bpy.types.Operator):
+    """Process input while Control key is pressed"""
+    bl_idname = 'wm.initiate_drag_drop'
+    bl_label = 'Drag & Drop'
+    # bl_options = {'REGISTER'}
 
-        ik.setModel(model, considered_joints)
-        dynComp.loadRobotModel(ik.reducedModel())
-        joint_positions = iDynTree.VectorDynSize(ik.reducedModel().getNrOfDOFs())
-
-        # Note: the InverseKinematics class actually implements a floating base inverse kinematics,
-        # meaning that both the joint position and the robot base are optimized to reach the desired cartesian position
-        world_H_base = dynComp.getWorldTransform(base_frame)
-
-        ok = inverseKinematics.setFloatingBaseOnFrameNamed(base_frame)
-
-        ik.addFrameConstraint(base_frame, world_H_base)
-
-        # base_H_ee_initial = dynComp.getRelativeTransform(base_frame, endeffector_frame);
-
-        # Define the transform of the selected cartesian target
-        base_H_ee_desired = iDynTree.Transform(iDynTree.Rotation.RPY(mytool.my_reach_roll*math.pi/180,
-                                                                     mytool.my_reach_pitch*math.pi/180,
-                                                                     mytool.my_reach_yaw*math.pi/180),
-                                               iDynTree.Position(mytool.my_reach_x,
-                                                                 mytool.my_reach_y,
-                                                                 mytool.my_reach_z))
-        # We want that the end effector reaches the target
-        ok = ik.addTarget(endeffector_frame, base_H_ee_desired)
-        if not ok :
-            ok = ik.updateTarget(endeffector_frame, base_H_ee_desired)
-            if not ok :
-                printError(self,"Impossible to add target on ", endeffector_frame)
-                return {'CANCELLED'}
-        # Initialize ik
-        dynComp.getJointPos(joint_positions)
-        ik.setReducedInitialCondition(world_H_base, joint_positions)
-        #ik.setDesiredReducedJointConfiguration(joint_positions)
-
-        # TODO: The following line generated the WARNING:
-        #  [WARNING] InverseKinematics: joint l_elbow (index 20)
-        #           initial condition is outside the limits 0.261799 1.85005. Actual value: 0
-        #  [WARNING] InverseKinematics: joint r_elbow (index 28)
-        #           initial condition is outside the limits 0.261799 1.85005. Actual value: 0
-        ok = ik.solve()
-
-        if not ok:
-            printError(self,"Impossible to solve inverse kinematics problem.")
-            return {'CANCELLED'}
-
-        base_transform = iDynTree.Transform.Identity()
-
-        # Get the solution
-        ik.getReducedSolution(base_transform, joint_positions)
-        dynComp.setJointPos(joint_positions)
-
-        pose_bones = bpy.data.objects[bpy.context.scene.my_tool.my_armature].pose.bones
-        for idyn_joint_idx in range(ik.reducedModel().getNrOfDOFs()):
-
-            # It is a prismatic joint (to be tested)
-            joint_name = ik.reducedModel().getJointName(idyn_joint_idx)
-
-            joint = pose_bones[joint_name]
-            joint_value = joint_positions[idyn_joint_idx]
-
-            if joint.lock_rotation[1]:
-                joint.delta_location[1] = joint_value
-            # It is a revolute joint
-            else:
-                joint.rotation_euler[1] = joint_value
-                joint.keyframe_insert(data_path="rotation_euler")
-
+    def execute(self, context):
+        print("Going to invoke the modal operator")
+        bpy.ops.object.modal_operator('INVOKE_DEFAULT')
         return {'FINISHED'}
 
+class ModalOperator(bpy.types.Operator):
+    bl_idname = "object.modal_operator"
+    bl_label = "Drap and Drop Operator"
+
+    def __init__(self):
+        print("Invoked!!!")
+        self.mouse_pos = [0.0, 0.0]
+        self.object = None
+        self.loc_3d = [0.0, 0.0, 0.0]
+
+    def __del__(self):
+        print("End operator")
+
+    def execute(self, context):
+        print("location: ", self.loc_3d[0], self.loc_3d[1], self.loc_3d[2])
+        return {'FINISHED'}
+
+    def modal(self, context, event):
+        if event.type == 'LEFTMOUSE':  # Apply
+            self.loc_3d = [event.mouse_region_x, event.mouse_region_y]
+
+            self.object = bpy.context.object
+            region = bpy.context.region
+            region3D = bpy.context.space_data.region_3d
+            #The direction indicated by the mouse position from the current view
+            view_vector = view3d_utils.region_2d_to_vector_3d(region, region3D, self.loc_3d)
+            #The 3D location in this direction
+            self.loc_3d = view3d_utils.region_2d_to_location_3d(region, region3D, self.loc_3d, view_vector)
+            #The 3D location converted in object local coordinates
+            # self.loc_3d = self.object.matrix_world.inverted() * mouse_loc
+
+            InverseKinematics.execute(self, self.loc_3d)
+
+            self.execute(context)
+
+        elif event.type == 'RIGHTMOUSE':  # Cancel
+            print("Quit pressed")
+            return {'CANCELLED'}
+
+        return {'RUNNING_MODAL'}
+
+    def invoke(self, context, event):
+        if context.area.type == 'VIEW_3D':
+            print("Drag and Drop operator invoked")
+            args = (self, context)
+            # self._handle = bpy.types.SpaceView3D.draw_handler_add(draw_callback_px, args, 'WINDOW', 'POST_PIXEL')
+
+            # Keeps mouse position current 3D location and current object for the draw callback
+            # (not needed to make self attribute if you don't want to use the callback)
+            self.loc_3d = [0, 0, 0]
+
+            self.object = context.object
+
+            context.window_manager.modal_handler_add(self)
+            return {'RUNNING_MODAL'}
+        else:
+            self.report({'WARNING'}, "View3D not found, cannot run operator")
+            return {'CANCELLED'}
 
 # ------------------------------------------------------------------------
 #    Panel in Object Mode
@@ -620,9 +570,8 @@ class OBJECT_PT_robot_controller(Panel):
     #     OBJECT_PT_robot_controller.joint_names = joint_names
 
     def draw(self, context):
-        global iDynTreeModel
 
-        if iDynTreeModel is None:
+        if ikv.iDynTreeModel is None:
             configure_ik()
 
         layout = self.layout
@@ -663,6 +612,8 @@ class OBJECT_PT_robot_controller(Panel):
         reach_box.row(align=True).prop(mytool, "my_reach_pitch")
         reach_box.row(align=True).prop(mytool, "my_reach_yaw")
         reach_box.operator("wm.reach_target")
+
+        reach_box.operator("wm.initiate_drag_drop")
 
         layout.separator()
 
@@ -728,34 +679,33 @@ class OT_OpenConfigurationFile(Operator, ImportHelper):
     def execute(self, context):
         filename, extension = os.path.splitext(self.filepath)
         self.parse_conf(self.filepath, context)
+        # bpy.ops.object.process_input('INVOKE_DEFAULT')
         return {'FINISHED'}
 
 
 def configure_ik():
 
-    global iDynTreeModel,inverseKinematics, dynComp
-
     model_urdf = bpy.context.scene['model_urdf']
     mdlLoader = iDynTree.ModelLoader()
     mdlLoader.loadModelFromString(model_urdf)
-    iDynTreeModel = mdlLoader.model()
+    ikv.iDynTreeModel = mdlLoader.model()
 
-    for link_idx in range(iDynTreeModel.getNrOfLinks()):
-        list_of_links.append((iDynTreeModel.getLinkName(link_idx),
-                              iDynTreeModel.getLinkName(link_idx),
+    # list_of_links = []
+    for link_idx in range(ikv.iDynTreeModel.getNrOfLinks()):
+        list_of_links.append((ikv.iDynTreeModel.getLinkName(link_idx),
+                              ikv.iDynTreeModel.getLinkName(link_idx),
                               ""))
 
-
-    inverseKinematics.setModel(iDynTreeModel)
+    ikv.inverseKinematics.setModel(ikv.iDynTreeModel)
     # Setup the ik problem
-    inverseKinematics.setCostTolerance(0.0001)
-    inverseKinematics.setConstraintsTolerance(0.00001)
-    inverseKinematics.setDefaultTargetResolutionMode(iDynTree.InverseKinematicsTreatTargetAsConstraintNone)
-    inverseKinematics.setRotationParametrization(iDynTree.InverseKinematicsRotationParametrizationRollPitchYaw)
+    ikv.inverseKinematics.setCostTolerance(0.0001)
+    ikv.inverseKinematics.setConstraintsTolerance(0.00001)
+    ikv.inverseKinematics.setDefaultTargetResolutionMode(iDynTree.InverseKinematicsTreatTargetAsConstraintNone)
+    ikv.inverseKinematics.setRotationParametrization(iDynTree.InverseKinematicsRotationParametrizationRollPitchYaw)
 
-    dynComp.loadRobotModel(iDynTreeModel)
-    dofs = dynComp.model().getNrOfDOFs()
+    ikv.dynComp.loadRobotModel(ikv.iDynTreeModel)
+    dofs = ikv.dynComp.model().getNrOfDOFs()
     s = iDynTree.VectorDynSize(dofs)
     for dof in range(dofs):
         s.setVal(dof, 0.0)
-    dynComp.setJointPos(s)
+    ikv.dynComp.setJointPos(s)
