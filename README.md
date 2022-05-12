@@ -91,7 +91,7 @@ $ blender --python-use-system-env -b -P "/where/you/have/blender-robotics-utils/
 
 
 ## blenderRCBPanel 🚧
-Python script that creates a panel inside the pose mode for connecting parts of the rig to the parts of the real robot(or simulator).
+Python addon that consists in a panel inside the pose mode for connecting parts of the rig to the parts of the real robot(or simulator).
 
 If the installation went fine you should have this panel on the right under the `Tools` section.
 First of all you have to configure it loading a `.json` file representing the structure of your robot like this one:
@@ -112,8 +112,35 @@ It should contain a list of pair where the first value will be the "YARP name" o
 Once configured, select the parts you want to control, press connect and then have fun!
 This has been tested with `iCub 2.5`.
 
+### Joint space
+
+It is possible to define the animation changing the values of joints from the joints' list, every time a new value is entered a waypoint in the animation is setted.
+
+Video 🎥:
+
 https://user-images.githubusercontent.com/19833605/159922346-0bc9cd53-1a5a-4ea1-a7f7-453bdbdc1547.mp4
 
+### Cartesian space
+#### Reach target
+1. The user selects the `Base Frame` and the `End Effector Frame` according to the joint he/she wants to move.
+2. Input the tranformation to be reached by `End Effector Frame` respect to `Base Frame`, in XYZ(meters) and RPY(degrees).
+3. Press `Reach target` button.
+4. The waypoint in the animation is automatically set.
+
+Video 🎥:
+
+https://user-images.githubusercontent.com/19152494/165498930-224c3871-620a-4c6c-9162-7e30c3578265.mp4
+
+#### Drag & Drop
+1. The user selects the `Base Frame` and the `End Effector Frame` according to the joint he/she wants to move.
+2. Press the button `Drag & Drop` to activate the feature. Once the button is pressed the user loses control of Blender.
+3. The user moves the mouse pointer in the 3D space of Blender and clicks the `right mouse button` to drop the position.
+4. The user clicks on the `left mouse button` to deactivate the drag and drop feature and to bring back the control to Blender.
+5. The waypoint in the animation is automatically set.
+
+Video 🎥:
+
+https://user-images.githubusercontent.com/19833605/167880668-5176a0c1-3110-41dc-be9f-8e0565752430.mp4
 
 
 ### Known limitations
