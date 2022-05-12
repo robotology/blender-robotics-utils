@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### `blenderRCBPanel`
 
 - Added list of controllable joints for designing animations.
-- Added section for reaching a cartesian target
+- Added section for reaching a cartesian target.
+- Added Drag&Drop function for moving in the cartesian space.
 
 ## [0.3.0] - 2022-02-28
 
