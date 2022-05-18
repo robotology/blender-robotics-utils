@@ -147,3 +147,6 @@ https://user-images.githubusercontent.com/19833605/167880668-5176a0c1-3110-41dc-
 
 - We are controlling sequentially all the parts connected, this may lead to some discrepancies between the animation and the movements. This can be improved using multithreading and/or using a remapper.
 
+## FAQs 🙋‍♂️
+
+Check our [faq section]() 👈
