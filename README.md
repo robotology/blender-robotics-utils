@@ -149,4 +149,4 @@ https://user-images.githubusercontent.com/19833605/167880668-5176a0c1-3110-41dc-
 
 ## FAQs 🙋‍♂️
 
-Check our [faq section]() 👈
+Check our [faq section](https://github.com/robotology/blender-robotics-utils/blob/master/doc/faq.md#frequentely-asked-questions) 👈
