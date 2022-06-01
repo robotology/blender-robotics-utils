@@ -690,7 +690,7 @@ class OT_OpenConfigurationFile(Operator, ImportHelper):
 
 
 def configure_ik():
-    if not hasattr(bpy.context.scene, 'model_urdf'):
+    if 'model_urdf' not in bpy.context.scene:
         ikv.configured = False
         return
     ikv.configured = True

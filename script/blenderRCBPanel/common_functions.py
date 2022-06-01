@@ -17,6 +17,9 @@ def printError(object, *args):
 
 def look_for_bones_with_drivers(armature_name):
     for joint_name in bpy.data.objects[armature_name].pose.bones.keys():
+        # It means that there are no drivers
+        if bpy.context.object.animation_data is None:
+            return
         for d in bpy.context.object.animation_data.drivers:
             if ('"%s"' % joint_name) in d.data_path:
                 bones_with_driver.append(joint_name)
