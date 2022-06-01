@@ -7,11 +7,19 @@ class IkVariables:
     inverseKinematics = iDynTree.InverseKinematics()
     dynComp = iDynTree.KinDynComputations()
     iDynTreeModel = None
+    configured = False
+
+bones_with_driver = []
 
 
 def printError(object, *args):
     object.report({"ERROR"}, " ".join(args))
 
+def look_for_bones_with_drivers(armature_name):
+    for joint_name in bpy.data.objects[armature_name].pose.bones.keys():
+        for d in bpy.context.object.animation_data.drivers:
+            if ('"%s"' % joint_name) in d.data_path:
+                bones_with_driver.append(joint_name)
 
 class InverseKinematics:
 
