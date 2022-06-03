@@ -379,8 +379,6 @@ def main(urdf_filename, blend_filename):
     rigify(urdf_filename)
     bpy.ops.wm.save_as_mainfile(filepath=blend_filename)
 
-
-
 # Execute main()
 if __name__=='__main__':
     argv = sys.argv
