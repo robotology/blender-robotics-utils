@@ -14,6 +14,8 @@ import idyntree.bindings as iDynTree
 import math
 import json
 from .common_functions import (printError,
+                               look_for_bones_with_drivers,
+                               bones_with_driver,
                                IkVariables as ikv,
                                InverseKinematics,
                                )
@@ -38,9 +40,6 @@ from bpy.types import (Panel,
                        )
 
 list_of_links = []
-
-# def printError(self, *args):
-#     self.report({"ERROR"}, " ".join(args))
 
 # ------------------------------------------------------------------------
 #    Structures
@@ -571,6 +570,9 @@ class OBJECT_PT_robot_controller(Panel):
 
     def draw(self, context):
 
+        if not bones_with_driver:
+            look_for_bones_with_drivers(context.scene.my_tool.my_armature)
+
         if ikv.iDynTreeModel is None:
             configure_ik()
 
@@ -626,6 +628,10 @@ class OBJECT_PT_robot_controller(Panel):
             pass
         else:
             for joint_name, joint in bpy.data.objects[mytool.my_armature].pose.bones.items():
+                # We do not have to add the entry in the list for the bones that have drivers
+                # since they have not to be controlled directly, but through the driver.s
+                if joint_name in bones_with_driver:
+                    continue
                 # Our bones rotate around y (revolute joint), translate along y (prismatic joint), if both are locked, it
                 # means it is a fixed joint.
                 if joint.lock_rotation[1] and joint.lock_location[1]:
@@ -647,7 +653,7 @@ class OBJECT_PT_robot_controller(Panel):
                 reach_box.enabled = False
             else:
                 box_joints.enabled = True
-                reach_box.enabled = True
+                reach_box.enabled = ikv.configured
                 if getattr(parts[scene.list_index], "value") in rcb_wrapper.keys():
                     row_disconnect.enabled = True
                     row_connect.enabled = False
@@ -684,7 +690,10 @@ class OT_OpenConfigurationFile(Operator, ImportHelper):
 
 
 def configure_ik():
-
+    if 'model_urdf' not in bpy.context.scene:
+        ikv.configured = False
+        return
+    ikv.configured = True
     model_urdf = bpy.context.scene['model_urdf']
     mdlLoader = iDynTree.ModelLoader()
     mdlLoader.loadModelFromString(model_urdf)

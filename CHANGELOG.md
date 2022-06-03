@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### `blenderRCBPanel`
+
+- Fixed when the urdf model is not saved inside the scene.
+- Removed from the list of joints the ones controlled via drivers.
+
 ## [0.4.0] - 2022-05-26
 
 ### `blenderRCBPanel`
@@ -32,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code refactored to be able to display the panel in the list of add-ons of blender
 
 ## [0.2.0] - 2021-11-29
+
 - Added action for automatically generate the rigs every time a commit
   is made in [`icub-models`](https://github.com/robotology/icub-models)
 
