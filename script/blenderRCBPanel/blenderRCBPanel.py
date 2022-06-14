@@ -625,11 +625,12 @@ class OBJECT_PT_robot_controller(Panel):
         try:
             scene.my_joints
         except AttributeError:
-            pass
+            joints_exist = False
         else:
+            joints_exist = True
             for joint_name, joint in bpy.data.objects[mytool.my_armature].pose.bones.items():
                 # We do not have to add the entry in the list for the bones that have drivers
-                # since they have not to be controlled directly, but through the driver.s
+                # since they have not to be controlled directly, but throgh the driver.s
                 if joint_name in bones_with_driver:
                     continue
                 # Our bones rotate around y (revolute joint), translate along y (prismatic joint), if both are locked, it
@@ -638,7 +639,7 @@ class OBJECT_PT_robot_controller(Panel):
                     continue
                 box_joints.prop(scene.my_joints, joint_name)
 
-        if len(context.scene.my_list) == 0:
+        if len(context.scene.my_list) == 0 or not joints_exist:
             box.enabled = False
             box_configure.enabled = True
             box_joints.enabled = False
