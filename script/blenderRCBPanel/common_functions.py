@@ -77,9 +77,10 @@ class InverseKinematics:
             parentLinkIdx = parentLink.getIndex()
             joint = traversal.getParentJointFromLinkIndex(visitedLinkIdx)
             visitedLinkIdx = parentLinkIdx
-            if joint.getNrOfDOFs() == 0:
+            joint_name = model.getJointName(joint.getIndex())
+            if joint.getNrOfDOFs() == 0 or joint_name.find("torso") != -1:
                 continue
-            considered_joints.append(model.getJointName(joint.getIndex()))
+            considered_joints.append(joint_name)
 
         # Extract reduced model
 
