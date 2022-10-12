@@ -43,7 +43,7 @@ jobs:
           mkdir build && cd build
           cmake -DCMAKE_INSTALL_PREFIX=/home/runner/install ..
           make install
-          echo "::set-output name=commit_hash::${commit_hash}"
+          echo "commit_hash=${commit_hash}" >> $GITHUB_OUTPUT
 
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
