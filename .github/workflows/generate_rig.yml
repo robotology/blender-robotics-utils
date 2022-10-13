@@ -65,15 +65,20 @@ jobs:
             blender --python-use-system-env -b -P "./script/urdfToBlender/urdfToBlender.py" -- --urdf_filename /home/runner/install/share/iCub/robots/iCubGazeboV${_version}/model.urdf --blend_filename ./rigs/iCubBlenderV${_version}.blend
           done
           ls -la ./rigs
-
-      - name: Commit and push changes
+          
+      - name: Create Pull Request
+        id: cpr
+        uses: peter-evans/create-pull-request@main
+        with:
+          commit-message: Automatic update of rig from icub-models commit ${{ steps.get_icub-models.outputs.commit_hash }}
+          branch: automatic-update-rigs-${{ steps.get_icub-models.outputs.commit_hash }}
+          delete-branch: true
+          title: 'Automatic update of rig from icub-models commit `${{ steps.get_icub-models.outputs.commit_hash }}`'
+          reviewers: Nicogene
+          assignees: ${{ github.actor }}
+          body: |
+            This PR has been triggered by [icub-models](https://github.com/robotology/icub-models)
+      - name: Check outputs
         run: |
-          cd ${GITHUB_WORKSPACE}
-          git status
-          git config --local user.email "actions@github.com"
-          git config --local user.name "GitHub Action"
-          git add -A
-          git commit -m "rigs: automatic update" -m "icub-models commit: ${{ steps.get_icub-models.outputs.commit_hash }}"
-          git fetch origin
-          git rebase origin/master
-          git push origin master
+          echo "Pull Request URL - ${{ steps.cpr.outputs.pull-request-url }}"  
+
