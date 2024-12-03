@@ -16,7 +16,7 @@ This repository is maintained by:
 
 ### Dependencies
 
-- Blender > 2.79 and < 4.0
+- Blender > 2.79 and < 4.0 (see https://github.com/robotology/blender-robotics-utils/issues/30)
 - [iDynTree](https://github.com/robotology/idyntree) python bindings
 - `GAZEBO_MODEL_PATH` [properly set](https://github.com/robotology/icub-models#use-the-models-with-gazebo).
 
